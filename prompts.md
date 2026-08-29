@@ -126,3 +126,4 @@ zaproponuj mi nowoczesne rozwiazania uzywane przy tego typu projektach oraz spyt
 
 przejdz w tryb glebokiego planowania i resarchu. 
 [/prompt]
+
