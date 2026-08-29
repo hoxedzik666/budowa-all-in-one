@@ -1,0 +1,241 @@
+{% extends "layouts/base.html" %}
+{% from "partials/karta_odcinka.html" import karta_odcinka %}
+{% block tytul %}{{ fraza or "Szukaj" }}{% endblock %}
+
+{% block naglowek %}
+<div class="mb-4">
+  <h1 class="h3 mb-1">Wyszukiwarka odcinków</h1>
+  <p class="text-body-secondary mb-3">
+    Wpisz kod obiektu — np. <code>D155</code>, <code>Wyl101</code>, <code>Wp65</code> —
+    a dostaniesz wszystkie odcinki z jego udziałem wraz z rysunkiem profilu,
+    wykazem materiałów i przelicznikiem rur.
+  </p>
+  <form method="get" class="row g-2 align-items-center" style="max-width: 44rem">
+    <div class="col position-relative">
+      <input class="form-control form-control-lg" name="q" value="{{ fraza }}"
+             id="pole-glowne" autocomplete="off" placeholder="np. D155">
+      <div id="podpowiedzi" class="list-group position-absolute w-100 shadow"
+           style="z-index: 20; display: none;"></div>
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-lg btn-primary"><i class="bi bi-search"></i> Szukaj</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block tresc %}
+
+{% if fraza and not wynik %}
+  <div class="alert alert-warning">
+    Nie znalazłem obiektu <strong>{{ fraza }}</strong>.
+    {% if podobne %}Może chodziło o jeden z tych?{% endif %}
+  </div>
+  {% if podobne %}
+    <div class="d-flex flex-wrap gap-2 mb-4">
+      {% for p in podobne %}
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('szukaj.szukaj', q=p.kod) }}">
+          {{ p.kod }} <span class="text-body-secondary">· {{ p.typ.value | lower }}</span>
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endif %}
+
+{% if wynik %}
+  {% set ob = wynik.obiekt %}
+
+  {# ---------- nagłówek obiektu ---------- #}
+  <div class="kafelek p-3 mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+      <div>
+        <h2 class="h4 mb-1">{{ ob.kod }}
+          <span class="badge text-bg-secondary align-middle">{{ ob.typ.value }}</span>
+        </h2>
+        <p class="text-body-secondary mb-0">{{ ob.opis or "brak opisu w dokumentacji" }}</p>
+      </div>
+      <div class="d-flex gap-2">
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('main.obiekt', kod=ob.kod) }}">
+          <i class="bi bi-card-list"></i> Karta obiektu
+        </a>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('niwelator.widok') }}?obiekt={{ ob.kod }}">
+          <i class="bi bi-binoculars"></i> Wytycz
+        </a>
+      </div>
+    </div>
+
+    <div class="row g-2 mt-2">
+      {% set kafelki = [
+        ('Rz. dna kanału',  ob.rzedna_dna_kanalu,  'spód rury'),
+        ('Rz. dna studni',  ob.rzedna_dna_studni,  'do tego kopiemy'),
+        ('Teren proj.',     ob.rzedna_terenu_proj, 'po robotach'),
+        ('Zagłębienie',     ob.zaglebienie,        'teren − dno'),
+        ('Głęb. wykopu',    ob.glebokosc_wykopu,   'teren − dno studni'),
+      ] %}
+      {% for etykieta, wartosc, opis in kafelki %}
+      <div class="col-6 col-md-4 col-xl">
+        <div class="kafelek p-2 h-100">
+          <div class="etykieta">{{ etykieta }}</div>
+          <div class="wartosc">{{ wartosc | liczba(2) }}</div>
+          <div class="small text-body-secondary">{{ opis }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# ---------- odcinki ---------- #}
+  <h2 class="h5 mb-3">
+    Odcinki z udziałem {{ ob.kod }}
+    <span class="badge text-bg-light">{{ wynik.odcinki | length }}</span>
+  </h2>
+
+  {% for pozycja in wynik.odcinki %}
+    {{ karta_odcinka(pozycja.segment, pozycja.wykaz) }}
+  {% else %}
+    <div class="alert alert-secondary">
+      Ten obiekt nie ma zapisanego odcinka — na rysunku występuje pojedynczo
+      (np. jako włączenie do innego kanału).
+    </div>
+  {% endfor %}
+
+  {# ---------- sąsiedztwo i repery ---------- #}
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="kafelek p-3 h-100">
+        <h2 class="h6 text-uppercase text-body-secondary mb-3">
+          Włączenia i przyłącza <span class="badge text-bg-light">{{ wynik.polaczenia | length }}</span>
+        </h2>
+        <div class="table-responsive" style="max-height: 22rem">
+          <table class="table table-sm tabela-gesta mb-0">
+            <tbody>
+            {% for c in wynik.polaczenia %}
+              <tr>
+                <td><span class="badge text-bg-light">{{ c.kierunek }}</span></td>
+                <td>
+                  {% if c.obiekt_zrodlowy_kod %}
+                    <a href="{{ url_for('szukaj.szukaj', q=c.obiekt_zrodlowy_kod) }}">{{ c.obiekt_zrodlowy_kod }}</a>
+                  {% endif %}
+                </td>
+                <td class="liczba">{% if c.dn_mm %}Ø{{ c.dn_mm }}{% endif %}</td>
+                <td class="liczba">{{ c.rzedna | liczba(2) }}</td>
+                <td class="small text-body-secondary">{{ (c.opis or "")[:40] }}</td>
+              </tr>
+            {% else %}
+              <tr><td class="text-body-secondary">Brak zapisanych włączeń.</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="kafelek p-3 h-100">
+        <h2 class="h6 text-uppercase text-body-secondary mb-2">Repery do nawiązania</h2>
+
+        {% if not wynik.repery_najblizsze.dostepne %}
+          <div class="alert alert-secondary py-2 px-3 small mb-3">
+            <i class="bi bi-info-circle"></i>
+            <strong>Najbliższe repery w terenie</strong> — {{ wynik.repery_najblizsze.powod }}
+            Wskaż pozycję obiektu w <a href="{{ url_for('mapa.przegladarka') }}">przeglądarce planów</a>,
+            a odległości policzą się same.
+          </div>
+        {% else %}
+          <table class="table table-sm tabela-gesta mb-3">
+            <thead class="table-light"><tr><th>Punkt</th><th class="text-end">Odległość</th></tr></thead>
+            <tbody>
+            {% for r in wynik.repery_najblizsze.repery %}
+              <tr><td>{{ r.kod }}</td><td class="liczba">{{ r.odleglosc_m | liczba(1) }} m</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        {% endif %}
+
+        <h3 class="h6 mb-2">Repery o zbliżonej rzędnej</h3>
+        <p class="small text-body-secondary">
+          Nie są to punkty najbliższe w terenie — to podpowiedź, z którego repera wygodnie
+          się nawiązać: przy zbliżonej wysokości odczyt zmieści się na łacie bez
+          przestawiania stanowiska.
+        </p>
+        <table class="table table-sm tabela-gesta mb-0">
+          <thead class="table-light">
+            <tr><th>Reper</th><th class="text-end">H [m n.p.m.]</th><th class="text-end">Różnica</th><th></th></tr>
+          </thead>
+          <tbody>
+          {% for r in wynik.repery_wysokosciowo %}
+            <tr>
+              <td class="fw-semibold">{{ r.nazwa }}</td>
+              <td class="liczba">{{ r.h | liczba(4) }}</td>
+              <td class="liczba">{{ r.roznica_wysokosci | liczba(2) }} m</td>
+              <td>
+                <a class="btn btn-sm btn-link p-0"
+                   href="{{ url_for('niwelator.widok') }}?reper={{ r.nazwa }}&obiekt={{ ob.kod }}"
+                   title="Policz odczyt zadany"><i class="bi bi-binoculars"></i></a>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4" class="text-body-secondary">Brak danych.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}
+
+{% block skrypty %}
+<script>
+$(function () {
+  // --- podpowiedzi do pola wyszukiwania ---
+  var czekaj = null;
+  $("#pole-glowne, #pole-szukaj").on("input", function () {
+    var pole = $(this);
+    var fraza = pole.val().trim();
+    clearTimeout(czekaj);
+    if (fraza.length < 1) { $("#podpowiedzi").hide(); return; }
+    czekaj = setTimeout(function () {
+      $.getJSON("{{ url_for('szukaj.podpowiedzi') }}", { q: fraza }, function (lista) {
+        var box = $("#podpowiedzi");
+        if (!box.length || !lista.length) { box.hide(); return; }
+        box.empty();
+        $.each(lista, function (_, p) {
+          box.append(
+            $("<a>").addClass("list-group-item list-group-item-action py-1")
+              .attr("href", "{{ url_for('szukaj.szukaj') }}?q=" + encodeURIComponent(p.kod))
+              .html("<strong>" + p.kod + "</strong> <span class='text-body-secondary small'>" +
+                    p.typ.toLowerCase() + "</span>")
+          );
+        });
+        box.show();
+      });
+    }, 180);
+  });
+  $(document).on("click", function (e) {
+    if (!$(e.target).closest("#pole-glowne, #podpowiedzi").length) $("#podpowiedzi").hide();
+  });
+
+  // --- mapki: ładujemy dopiero gdy wiadomo, że odcinek ma pozycję na planie ---
+  $("[data-mapka]").each(function () {
+    var box = $(this);
+    var url = box.data("mapka");
+    var img = new Image();
+    img.onload = function () {
+      box.html($("<a>").attr("href", url).attr("target", "_blank")
+        .append($("<img>").attr("src", url).addClass("img-fluid rounded border")));
+    };
+    img.onerror = function () {
+      box.html(
+        '<div class="alert alert-secondary py-2 px-3 small mb-0">' +
+        '<i class="bi bi-map"></i> Ten odcinek nie ma jeszcze wskazanej pozycji na planie ' +
+        'sytuacyjnym. Etykiety na planach są zamienione na krzywe, więc automat ich nie ' +
+        'odczytuje — pozycję wskazuje się raz, ręcznie, w <a href="{{ url_for("mapa.przegladarka") }}">' +
+        'przeglądarce planów</a>.</div>'
+      );
+    };
+    img.src = url;
+  });
+});
+</script>
+{% endblock %}

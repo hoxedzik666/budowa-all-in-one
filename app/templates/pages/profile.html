@@ -1,0 +1,45 @@
+{% extends "layouts/base.html" %}
+{% block tytul %}Profile{% endblock %}
+
+{% block naglowek %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-0">Profile podłużne</h1>
+    <p class="text-body-secondary mb-0">Każdy blok rysunkowy z pliku <code>Profile Scalone.pdf</code>.</p>
+  </div>
+  <form class="d-flex gap-2" method="get">
+    <input class="form-control form-control-sm" name="szukaj" value="{{ szukaj }}" placeholder="oznaczenie profilu">
+    <button class="btn btn-sm btn-primary">Szukaj</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block tresc %}
+<div class="kafelek p-0">
+  <div class="table-responsive">
+    <table class="table table-sm table-hover tabela-gesta mb-0">
+      <thead class="table-light">
+        <tr><th>Oznaczenie</th><th>Branża</th><th>Odniesienie</th>
+            <th class="text-end">Strona</th><th class="text-end">Poz. porównawczy</th>
+            <th class="text-end">Długość [m]</th><th class="text-end">Węzłów</th><th class="text-end">Odcinków</th></tr>
+      </thead>
+      <tbody>
+      {% for p in profile %}
+        <tr>
+          <td class="fw-semibold"><a href="{{ url_for('main.profil', profil_id=p.id) }}">{{ p.oznaczenie }}</a></td>
+          <td><span class="badge text-bg-light">{{ p.branza.value }}</span></td>
+          <td class="small text-body-secondary">
+            {{ "dno kanału" if p.typ_odniesienia.value == "DNO_KANALU" else "oś przewodu" }}
+          </td>
+          <td class="liczba">{{ p.sheet.nr_strony if p.sheet else "" }}</td>
+          <td class="liczba">{{ p.poziom_porownawczy | liczba(2) }}</td>
+          <td class="liczba">{{ p.dlugosc_calkowita_m | liczba(2) }}</td>
+          <td class="liczba">{{ p.wystapienia | length }}</td>
+          <td class="liczba">{{ p.odcinki | length }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

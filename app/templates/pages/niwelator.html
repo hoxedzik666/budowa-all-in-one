@@ -1,0 +1,173 @@
+{% extends "layouts/base.html" %}
+{% block tytul %}Niwelator{% endblock %}
+
+{% block naglowek %}
+<div class="mb-3">
+  <h1 class="h3 mb-1">Kalkulator niwelacyjny</h1>
+  <p class="text-body-secondary mb-0">
+    Ustaw niwelator, weź odczyt wstecz na reperze, a program powie, ile ma pokazać łata,
+    żeby dno kanału wyszło na rzędnej projektowej.
+  </p>
+</div>
+{% endblock %}
+
+{% block tresc %}
+<div class="row g-3">
+  <div class="col-lg-5">
+    <form class="kafelek p-3" id="formularz-niwelacji">
+      <h2 class="h6 text-uppercase text-body-secondary mb-3">1 · Stanowisko</h2>
+      <div class="mb-3">
+        <label class="form-label">Reper</label>
+        <input class="form-control" name="reper" id="pole-reper" list="lista-reperow"
+               placeholder="np. o101">
+        <datalist id="lista-reperow">
+          {% for r in repery %}<option value="{{ r.nazwa }}">H = {{ r.h | liczba(4) }}</option>{% endfor %}
+        </datalist>
+        <div class="form-text">Albo wpisz rzędną ręcznie poniżej.</div>
+      </div>
+      <div class="row g-2 mb-3">
+        <div class="col-6">
+          <label class="form-label">Rzędna repera [m n.p.m.]</label>
+          <input class="form-control" name="rzedna_repera" id="pole-rzedna-repera" inputmode="decimal">
+        </div>
+        <div class="col-6">
+          <label class="form-label">Odczyt wstecz [m]</label>
+          <input class="form-control" name="odczyt_wstecz" inputmode="decimal" placeholder="np. 1,432">
+        </div>
+      </div>
+
+      <h2 class="h6 text-uppercase text-body-secondary mb-3 mt-4">2 · Cel</h2>
+      <div class="mb-3">
+        <label class="form-label">Obiekt z dokumentacji</label>
+        <input class="form-control" name="obiekt" placeholder="np. D155"
+               value="{{ request.args.get('obiekt', '') }}">
+      </div>
+      <div class="row g-2 mb-3">
+        <div class="col-6">
+          <label class="form-label">Rzędna docelowa</label>
+          <select class="form-select" name="cel">
+            <option value="dno_kanalu">dno kanału</option>
+            <option value="dno_studni">dno studni (Rz.d.)</option>
+          </select>
+        </div>
+        <div class="col-6">
+          <label class="form-label">albo rzędna wprost</label>
+          <input class="form-control" name="rzedna_projektowa" inputmode="decimal">
+        </div>
+      </div>
+
+      <h2 class="h6 text-uppercase text-body-secondary mb-3 mt-4">3 · Kontrola (opcjonalnie)</h2>
+      <div class="row g-2 mb-3">
+        <div class="col-6">
+          <label class="form-label">Odczyt zmierzony [m]</label>
+          <input class="form-control" name="odczyt_zmierzony" inputmode="decimal">
+        </div>
+        <div class="col-6">
+          <label class="form-label">Tolerancja [m]</label>
+          <input class="form-control" name="tolerancja" inputmode="decimal" value="0,01">
+        </div>
+      </div>
+
+      <button class="btn btn-primary w-100" type="submit">
+        <i class="bi bi-calculator"></i> Oblicz
+      </button>
+    </form>
+  </div>
+
+  <div class="col-lg-7">
+    <div class="kafelek p-3" id="wynik-niwelacji">
+      <p class="text-body-secondary mb-0">Wypełnij formularz i naciśnij „Oblicz”.</p>
+    </div>
+
+    <div class="kafelek p-3 mt-3">
+      <h2 class="h6 text-uppercase text-body-secondary mb-3">Jak to działa</h2>
+      <pre class="mb-2 small bg-body-tertiary p-3 rounded">HI      = rzędna repera + odczyt wstecz
+H punktu = HI − odczyt wprzód
+odczyt zadany = HI − rzędna projektowa</pre>
+      <p class="small text-body-secondary mb-0">
+        <strong>HI</strong> to wysokość celowej (horyzont instrumentu) — poziom, na którym
+        niwelator „patrzy”. Dopóki nie przestawisz statywu, HI jest stałe, więc każdy kolejny
+        punkt liczysz jednym odejmowaniem. Odczyt większy od zadanego znaczy, że łata stoi
+        niżej niż trzeba — czyli wykop jest przegłębiony.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block skrypty %}
+<script>
+$(function () {
+  var repery = {{ repery | map(attribute='nazwa') | list | tojson_pl | safe }};
+  var wysokosci = {{ repery | map(attribute='h') | map('float') | list | tojson_pl | safe }};
+
+  // Wybór repera z listy podstawia jego rzędną.
+  $("#pole-reper").on("change input", function () {
+    var i = repery.indexOf($(this).val().trim());
+    if (i >= 0) $("#pole-rzedna-repera").val(String(wysokosci[i]).replace(".", ","));
+  });
+
+  $("#formularz-niwelacji").on("submit", function (e) {
+    e.preventDefault();
+    var dane = {};
+    $.each($(this).serializeArray(), function (_, p) { dane[p.name] = p.value; });
+
+    $.ajax({
+      url: "{{ url_for('niwelator.oblicz') }}",
+      method: "POST",
+      contentType: "application/json",
+      data: JSON.stringify(dane)
+    }).done(function (w) {
+      var ocenaKlasa = "secondary";
+      if (w.ocena === "OK") ocenaKlasa = "success";
+      else if (w.ocena) ocenaKlasa = "danger";
+
+      var html = '<h2 class="h6 text-uppercase text-body-secondary mb-3">Wynik</h2>';
+      html += '<div class="row g-3 mb-3">';
+      html += kafelek("Wysokość celowej (HI)", pl(w.hi, 4) + " m n.p.m.", "primary");
+      html += kafelek("Rzędna projektowa", pl(w.rzedna_projektowa, 3) + " m n.p.m.", "secondary");
+      html += kafelek("ODCZYT ZADANY NA ŁACIE", pl(w.odczyt_zadany, 3) + " m", "dark");
+      html += "</div>";
+
+      if (w.wykonalne === false) {
+        html += '<div class="alert alert-warning mb-3">' +
+                '<i class="bi bi-exclamation-triangle"></i> <strong>Sprawdz stanowisko.</strong><br>' +
+                w.uwaga + "</div>";
+      }
+
+      if (w.odczyt_zmierzony !== null && w.odczyt_zmierzony !== undefined) {
+        html += '<div class="alert alert-' + ocenaKlasa + ' mb-3">' +
+                "<strong>" + w.ocena + "</strong><br>" +
+                "zmierzono " + pl(w.odczyt_zmierzony, 3) + " m, zadano " +
+                pl(w.odczyt_zadany, 3) + " m, różnica " + pl(w.roznica, 3) + " m</div>";
+      }
+
+      if (w.obiekt) {
+        html += '<table class="table table-sm tabela-gesta">' +
+                "<tbody>" +
+                wiersz("Obiekt", w.obiekt.kod + " (" + w.obiekt.typ + ")") +
+                wiersz("Rzędna dna kanału", pl(w.obiekt.rzedna_dna_kanalu, 2)) +
+                wiersz("Rzędna dna studni", pl(w.obiekt.rzedna_dna_studni, 2)) +
+                wiersz("Teren projektowany", pl(w.obiekt.rzedna_terenu_proj, 2)) +
+                wiersz("Głębokość wykopu", pl(w.glebokosc_wykopu, 2) + " m") +
+                (w.przykrycie !== undefined ? wiersz("Przykrycie nad rurą", pl(w.przykrycie, 2) + " m") : "") +
+                "</tbody></table>";
+      }
+      $("#wynik-niwelacji").html(html);
+    }).fail(function (x) {
+      var b = (x.responseJSON && x.responseJSON.blad) || "Nie udało się policzyć.";
+      $("#wynik-niwelacji").html('<div class="alert alert-warning mb-0">' + b + "</div>");
+    });
+  });
+
+  function kafelek(etykieta, wartosc, kolor) {
+    return '<div class="col-md-4"><div class="kafelek p-3 h-100">' +
+           '<div class="etykieta">' + etykieta + "</div>" +
+           '<div class="wartosc text-' + kolor + '">' + wartosc + "</div></div></div>";
+  }
+  function wiersz(a, b) {
+    return "<tr><td>" + a + '</td><td class="liczba fw-semibold">' + b + "</td></tr>";
+  }
+});
+</script>
+{% endblock %}

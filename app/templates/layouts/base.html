@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="pl" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block tytul %}Budowa All-in-One{% endblock %} — wod-kan</title>
+
+  {# Motyw ustawiamy PRZED pierwszym malowaniem, inaczej strona mignie na biało. #}
+  <script>
+    (function () {
+      try {
+        var m = localStorage.getItem("motyw") || "domyslny";
+        var s = localStorage.getItem("schemat") || "auto";
+        var t = localStorage.getItem("teren") === "1";
+        var el = document.documentElement;
+        if (s === "auto") {
+          s = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        if (m === "warsztat") s = "dark";
+        if (m === "slonce") s = "light";
+        el.setAttribute("data-bs-theme", s);
+        el.setAttribute("data-motyw", m);
+        if (t) el.setAttribute("data-teren", "1");
+      } catch (e) { /* prywatne okno bez localStorage - zostaje domyslny wyglad */ }
+    })();
+  </script>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/css/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/font/bootstrap-icons.min.css') }}">
+  <script src="{{ url_for('static', filename='vendor/tailwind/tailwind.play.js') }}"></script>
+  <script>
+    // PREFIKS JEST OBOWIAZKOWY. Bez niego Tailwind emituje wlasne utility
+    // o nazwach, ktorych uzywa Bootstrap - m.in. `.collapse { visibility: collapse }`,
+    // co czynilo niewidoczna nawigacje i tresc rozwijanych sekcji (patrz
+    // docs/project-docs/08-motywy.md). Klasy Tailwinda pisze sie teraz `tw-*`.
+    tailwind.config = { prefix: "tw-", corePlugins: { preflight: false } };
+  </script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/motywy.css') }}">
+</head>
+<body class="bg-body-tertiary">
+
+<nav class="navbar navbar-expand-xl bg-dark border-bottom border-body" data-bs-theme="dark">
+  <div class="container-fluid px-3">
+    <a class="navbar-brand fw-semibold" href="{{ url_for('main.pulpit') }}">
+      <i class="bi bi-diagram-3"></i> Budowa <span class="text-info">wod-kan</span>
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu"
+            aria-controls="menu" aria-expanded="false" aria-label="Rozwiń nawigację">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="menu">
+      <ul class="navbar-nav me-auto flex-wrap">
+        {% set pozycje_menu = [
+          ('main.pulpit',   'Pulpit',    'speedometer2'),
+          ('szukaj.szukaj', 'Szukaj',    'search'),
+          ('main.odcinki',  'Odcinki',   'rulers'),
+          ('main.obiekty',  'Obiekty',   'geo-alt'),
+          ('main.profile',  'Profile',   'graph-down'),
+          ('niwelator.widok','Niwelator','binoculars'),
+          ('niwelator.ciag_rur','Spadek ciągu','align-bottom'),
+          ('mapa.przegladarka','Mapa',    'map'),
+          ('main.osnowa',   'Osnowa',    'pin-map'),
+          ('main.materialy','Materiały', 'box-seam'),
+          ('main.importy',  'Importy',   'clock-history'),
+        ] %}
+        {% for endpoint, etykieta, ikona in pozycje_menu %}
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint == endpoint %}active fw-semibold{% endif %}"
+               href="{{ url_for(endpoint) }}">
+              <i class="bi bi-{{ ikona }}"></i> {{ etykieta }}
+            </a>
+          </li>
+        {% endfor %}
+        {% if current_user.is_authenticated %}
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint == 'zadania.lista' %}active fw-semibold{% endif %}"
+               href="{{ url_for('zadania.lista') }}">
+              <i class="bi bi-check2-square"></i> Zadania
+              {% if otwarte_zadania %}<span class="badge text-bg-warning">{{ otwarte_zadania }}</span>{% endif %}
+            </a>
+          </li>
+        {% endif %}
+      </ul>
+
+      <form class="d-flex me-2" role="search" action="{{ url_for('szukaj.szukaj') }}" method="get">
+        <input class="form-control form-control-sm me-2" type="search" name="q" id="pole-szukaj"
+               autocomplete="off" placeholder="np. D155" aria-label="Szukaj" style="min-width: 9rem">
+        <button class="btn btn-sm btn-outline-info" type="submit"><i class="bi bi-search"></i></button>
+      </form>
+
+      {% include "partials/przelacznik_motywu.html" %}
+
+      {% if current_user.is_authenticated %}
+        <div class="dropdown ms-2">
+          <button class="btn btn-sm btn-outline-light dropdown-toggle" data-bs-toggle="dropdown">
+            <i class="bi bi-person-circle"></i> {{ current_user.login }}
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><span class="dropdown-item-text small text-body-secondary">{{ current_user.rola.value }}</span></li>
+            {% if current_user.jest_adminem %}
+              <li><a class="dropdown-item" href="{{ url_for('panel.uzytkownicy') }}">
+                <i class="bi bi-people"></i> Użytkownicy</a></li>
+            {% endif %}
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{{ url_for('auth.wyloguj') }}">
+              <i class="bi bi-box-arrow-right"></i> Wyloguj</a></li>
+          </ul>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</nav>
+
+<main class="container-fluid px-3 py-4">
+  {% with komunikaty = get_flashed_messages(with_categories=true) %}
+    {% if komunikaty %}
+      {% for kategoria, tresc in komunikaty %}
+        <div class="alert alert-{{ kategoria }} alert-dismissible fade show" role="alert">
+          {{ tresc }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+  {% block naglowek %}{% endblock %}
+  {% block tresc %}{% endblock %}
+</main>
+
+<footer class="container-fluid px-3 py-3 text-body-secondary small border-top">
+  Dane źródłowe: <code>Profile Scalone.pdf</code>, <code>Materiał.xlsx</code>,
+  <code>!!_DK29_osnowa_ok_v1.txt</code> — obwodnica Krosna Odrzańskiego, DK29.
+  Rzędne w metrach n.p.m., spadki w ‰.
+</footer>
+
+<script src="{{ url_for('static', filename='vendor/jquery/jquery-3.7.1.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block skrypty %}{% endblock %}
+</body>
+</html>

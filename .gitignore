@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+data/exports/*
+!data/exports/.gitkeep
+instance/
+*.log
+.pytest_cache/
+scripts/*.tmp

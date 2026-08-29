@@ -1,0 +1,135 @@
+{% extends "layouts/base.html" %}
+{% block tytul %}Pulpit{% endblock %}
+
+{% block naglowek %}
+<div class="d-flex justify-content-between align-items-end mb-3">
+  <div>
+    <h1 class="h3 mb-0">Pulpit budowy</h1>
+    <p class="text-body-secondary mb-0">Kanalizacja deszczowa i tłoczna — obwodnica Krosna Odrzańskiego, DK29</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block tresc %}
+<div class="row g-3 mb-4">
+  {% set kafelki = [
+    ('Profile',   liczby.profile,   'graph-down',  'main.profile'),
+    ('Obiekty',   liczby.obiekty,   'geo-alt',     'main.obiekty'),
+    ('Odcinki',   liczby.odcinki,   'rulers',      'main.odcinki'),
+    ('Repery',    liczby.osnowa,    'pin-map',     'main.osnowa'),
+    ('Materiały', liczby.materialy, 'box-seam',    'main.materialy'),
+  ] %}
+  {% for etykieta, wartosc, ikona, endpoint in kafelki %}
+  <div class="col-6 col-md-4 col-xl-2">
+    <a href="{{ url_for(endpoint) }}" class="kafelek p-3 d-block text-decoration-none text-body h-100">
+      <div class="etykieta"><i class="bi bi-{{ ikona }}"></i> {{ etykieta }}</div>
+      <div class="wartosc">{{ wartosc }}</div>
+    </a>
+  </div>
+  {% endfor %}
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="kafelek p-3 h-100">
+      <div class="etykieta"><i class="bi bi-arrows-expand-vertical"></i> Długość sieci</div>
+      <div class="wartosc">{{ liczby.dlugosc | liczba(0) }} <small class="fs-6 text-body-secondary">m</small></div>
+    </div>
+  </div>
+</div>
+
+{# --- podglad planu sytuacyjnego --- #}
+{% if strona_planu %}
+<div class="kafelek p-3 mb-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h2 class="h6 text-uppercase text-body-secondary mb-0">
+      <i class="bi bi-map"></i> Plan sytuacyjny
+    </h2>
+    <form method="get" class="d-flex gap-2 align-items-center">
+      <select name="plan" class="form-select form-select-sm" style="width: 12rem"
+              onchange="this.form.submit()">
+        {% for s in strony_planu %}
+          <option value="{{ s.nr_strony }}" {% if s.id == strona_planu.id %}selected{% endif %}>
+            arkusz {{ s.nr_strony }} — 1:{{ s.skala }}
+          </option>
+        {% endfor %}
+      </select>
+      <a class="btn btn-sm btn-outline-primary text-nowrap"
+         href="{{ url_for('mapa.przegladarka', strona=strona_planu.nr_strony) }}">
+        Otwórz w przeglądarce
+      </a>
+    </form>
+  </div>
+  <a href="{{ url_for('mapa.przegladarka', strona=strona_planu.nr_strony) }}"
+     title="Kliknij, żeby otworzyć arkusz w pełnej rozdzielczości">
+    <img class="img-fluid rounded border" loading="lazy"
+         src="{{ url_for('mapa.strona_png', nr=strona_planu.nr_strony) }}?dpi=60"
+         alt="Podgląd planu sytuacyjnego, arkusz {{ strona_planu.nr_strony }}">
+  </a>
+  <p class="small text-body-secondary mb-0 mt-2">
+    Podgląd w niskiej rozdzielczości. Etykiety obiektów są na tych rysunkach zamienione
+    na krzywe — pozycję obiektu wskazuje się raz, klikając w mapę w przeglądarce.
+  </p>
+</div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="kafelek p-3 h-100">
+      <h2 class="h6 text-uppercase text-body-secondary mb-3">Obiekty wg typu</h2>
+      <table class="table table-sm tabela-gesta mb-0">
+        <tbody>
+        {% for typ, ile in typy %}
+          <tr>
+            <td><a href="{{ url_for('main.obiekty', typ=typ.name) }}">{{ typ.value }}</a></td>
+            <td class="liczba">{{ ile }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="kafelek p-3 h-100">
+      <h2 class="h6 text-uppercase text-body-secondary mb-3">Rury wg średnicy</h2>
+      <table class="table table-sm tabela-gesta mb-0">
+        <thead><tr><th>Ø [mm]</th><th class="text-end">Odcinków</th><th class="text-end">Długość [m]</th></tr></thead>
+        <tbody>
+        {% for dn, ile, dlugosc in srednice %}
+          <tr>
+            <td><a href="{{ url_for('main.odcinki') }}?szukaj=">Ø{{ dn }}</a></td>
+            <td class="liczba">{{ ile }}</td>
+            <td class="liczba">{{ dlugosc | liczba(1) }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="kafelek p-3 h-100">
+      <h2 class="h6 text-uppercase text-body-secondary mb-3">Ostatnie importy</h2>
+      <table class="table table-sm tabela-gesta mb-0">
+        <tbody>
+        {% for b in importy %}
+          <tr>
+            <td>
+              <div class="fw-semibold">{{ b.typ_importu }}</div>
+              <div class="small text-body-secondary">{{ b.plik }}</div>
+            </td>
+            <td class="text-end">
+              {% if b.liczba_ostrzezen %}
+                <a href="{{ url_for('main.importy') }}" class="badge text-bg-warning">{{ b.liczba_ostrzezen }} uwag</a>
+              {% else %}
+                <span class="badge text-bg-success">czysto</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% else %}
+          <tr><td class="text-body-secondary">Brak importów — uruchom <code>flask import-wszystko</code>.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

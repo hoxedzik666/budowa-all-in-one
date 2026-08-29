@@ -1,0 +1,184 @@
+{% extends "layouts/base.html" %}
+{% block tytul %}Plany sytuacyjne{% endblock %}
+
+{% block naglowek %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-1">Plany sytuacyjne</h1>
+    <p class="text-body-secondary mb-0">
+      Etykiety na tych rysunkach są zamienione na krzywe wektorowe, więc program nie
+      odczyta ich automatycznie. Pozycję obiektu wskazuje się raz — kliknięciem w mapę.
+      Od tego momentu działa wycinek mapy przy odcinku i odległości do sąsiadów.
+    </p>
+  </div>
+  <form method="get" class="d-flex gap-2 align-items-center">
+    <label class="form-label mb-0 small text-body-secondary">Arkusz</label>
+    <select name="strona" class="form-select form-select-sm" style="width: 12rem"
+            onchange="this.form.submit()">
+      {% for s in strony %}
+        <option value="{{ s.nr_strony }}" {% if strona and s.id == strona.id %}selected{% endif %}>
+          strona {{ s.nr_strony }} — 1:{{ s.skala }}
+        </option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+{% endblock %}
+
+{% block tresc %}
+{% if not strona %}
+  <div class="alert alert-warning">
+    Nie znalazłem pliku <code>Plany sytuacyjne Scalone.pdf</code> w katalogu <code>docs/</code>.
+  </div>
+{% else %}
+
+<div class="row g-3">
+  <div class="col-lg-9">
+    <div class="kafelek p-2">
+      <div class="d-flex justify-content-between align-items-center mb-2 px-2">
+        <div class="small text-body-secondary">
+          Arkusz {{ strona.szerokosc_pt | liczba(0) }} × {{ strona.wysokosc_pt | liczba(0) }} pt,
+          skala 1:{{ strona.skala }}
+        </div>
+        <div class="btn-group btn-group-sm">
+          <button class="btn btn-outline-secondary" id="tryb-podglad">
+            <i class="bi bi-eye"></i> Podgląd
+          </button>
+          <button class="btn btn-outline-primary" id="tryb-wskaz">
+            <i class="bi bi-geo-alt"></i> Wskaż pozycję
+          </button>
+        </div>
+      </div>
+
+      <div id="plansza" class="position-relative" style="overflow: auto; max-height: 76vh;">
+        <img id="obraz-planu" class="d-block"
+             src="{{ url_for('mapa.strona_png', nr=strona.nr_strony) }}?dpi=90"
+             data-szerokosc-pt="{{ strona.szerokosc_pt }}"
+             data-wysokosc-pt="{{ strona.wysokosc_pt }}"
+             data-strona-id="{{ strona.id }}"
+             alt="Plan sytuacyjny, strona {{ strona.nr_strony }}">
+        <svg id="znaczniki" class="position-absolute top-0 start-0" style="pointer-events: none;"></svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-3">
+    <div class="kafelek p-3 mb-3">
+      <h2 class="h6 text-uppercase text-body-secondary mb-2">Jak wskazać pozycję</h2>
+      <ol class="small ps-3 mb-0">
+        <li>Wpisz kod obiektu, np. <code>D155</code>.</li>
+        <li>Kliknij <em>Wskaż pozycję</em>.</li>
+        <li>Kliknij w mapie miejsce, gdzie ten obiekt leży.</li>
+      </ol>
+      <hr>
+      <div class="mb-2">
+        <label class="form-label small">Kod obiektu</label>
+        <input class="form-control form-control-sm" id="kod-obiektu" placeholder="np. D155">
+      </div>
+      <div id="status-wskazania" class="small text-body-secondary">
+        Tryb podglądu — kliknięcie nic nie zapisuje.
+      </div>
+    </div>
+
+    <div class="kafelek p-3">
+      <h2 class="h6 text-uppercase text-body-secondary mb-2">
+        Wskazane na tym arkuszu <span class="badge text-bg-light">{{ lokalizacje | length }}</span>
+      </h2>
+      <table class="table table-sm tabela-gesta mb-0">
+        <tbody>
+        {% for l in lokalizacje %}
+          <tr>
+            <td>
+              <a href="{{ url_for('szukaj.szukaj', q=l.obiekt.kod) }}">{{ l.obiekt.kod }}</a>
+              {% if not l.pewna %}<span class="badge text-bg-warning">niepewne</span>{% endif %}
+            </td>
+            <td class="liczba small text-body-secondary">
+              {{ l.x_pt | liczba(0) }}, {{ l.y_pt | liczba(0) }}
+            </td>
+            <td>
+              <button class="btn btn-sm btn-link p-0 text-danger" data-usun="{{ l.obiekt.kod }}"
+                      title="Usuń wskazanie"><i class="bi bi-x-lg"></i></button>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td class="text-body-secondary small">Nic jeszcze nie wskazano.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block skrypty %}
+<script>
+$(function () {
+  var wskazywanie = false;
+  var obraz = $("#obraz-planu");
+  if (!obraz.length) return;
+
+  var szerPt = parseFloat(obraz.data("szerokosc-pt"));
+  var wysPt = parseFloat(obraz.data("wysokosc-pt"));
+  var stronaId = obraz.data("strona-id");
+
+  function rysujZnaczniki() {
+    var svg = $("#znaczniki");
+    svg.attr({ width: obraz.width(), height: obraz.height() });
+  }
+  obraz.on("load", rysujZnaczniki);
+  $(window).on("resize", rysujZnaczniki);
+  rysujZnaczniki();
+
+  $("#tryb-wskaz").on("click", function () {
+    wskazywanie = true;
+    $(this).addClass("active");
+    $("#tryb-podglad").removeClass("active");
+    obraz.css("cursor", "crosshair");
+    $("#status-wskazania").html('<span class="text-primary">Kliknij w mapę, żeby zapisać pozycję.</span>');
+  });
+  $("#tryb-podglad").on("click", function () {
+    wskazywanie = false;
+    $(this).addClass("active");
+    $("#tryb-wskaz").removeClass("active");
+    obraz.css("cursor", "default");
+    $("#status-wskazania").text("Tryb podglądu — kliknięcie nic nie zapisuje.");
+  });
+
+  obraz.on("click", function (e) {
+    if (!wskazywanie) return;
+    var kod = $("#kod-obiektu").val().trim();
+    if (!kod) {
+      $("#status-wskazania").html('<span class="text-danger">Najpierw wpisz kod obiektu.</span>');
+      return;
+    }
+    // Piksel na obrazie -> punkt PDF (obraz jest przeskalowana cala strona).
+    var poz = obraz.offset();
+    var px = e.pageX - poz.left;
+    var py = e.pageY - poz.top;
+    var xPt = px / obraz.width() * szerPt;
+    var yPt = py / obraz.height() * wysPt;
+
+    $.ajax({
+      url: "{{ url_for('mapa.zapisz_pozycje') }}",
+      method: "POST",
+      contentType: "application/json",
+      data: JSON.stringify({ kod: kod, strona_id: stronaId, x_pt: xPt, y_pt: yPt })
+    }).done(function () {
+      $("#status-wskazania").html(
+        '<span class="text-success">Zapisano ' + kod + " (" + xPt.toFixed(0) + ", " + yPt.toFixed(0) + " pt).</span>");
+      setTimeout(function () { location.reload(); }, 700);
+    }).fail(function (x) {
+      var b = (x.responseJSON && x.responseJSON.blad) || "Nie udało się zapisać.";
+      $("#status-wskazania").html('<span class="text-danger">' + b + "</span>");
+    });
+  });
+
+  $(document).on("click", "[data-usun]", function () {
+    var kod = $(this).data("usun");
+    $.ajax({ url: "/api/mapa/pozycja/" + encodeURIComponent(kod), method: "DELETE" })
+      .done(function () { location.reload(); });
+  });
+});
+</script>
+{% endblock %}

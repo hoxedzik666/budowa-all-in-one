@@ -1,0 +1,154 @@
+{% extends "layouts/base.html" %}
+{% block tytul %}{{ ob.kod }}{% endblock %}
+
+{% block naglowek %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-1">{{ ob.kod }}
+      <span class="badge text-bg-secondary align-middle">{{ ob.typ.value }}</span>
+    </h1>
+    <p class="text-body-secondary mb-0">{{ ob.opis or "brak opisu w dokumentacji" }}</p>
+  </div>
+  <a class="btn btn-sm btn-outline-primary"
+     href="{{ url_for('niwelator.widok') }}?obiekt={{ ob.kod }}">
+    <i class="bi bi-binoculars"></i> Wytycz niwelatorem
+  </a>
+</div>
+{% endblock %}
+
+{% block tresc %}
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="kafelek p-3">
+      <h2 class="h6 text-uppercase text-body-secondary mb-3">Rzędne projektowe</h2>
+      <table class="table table-sm tabela-gesta mb-0">
+        <tbody>
+          {% set wiersze = [
+            ('Rzędna terenu projektowanego', ob.rzedna_terenu_proj, 'poziom gotowej nawierzchni / terenu'),
+            ('Rzędna terenu istniejącego',   ob.rzedna_terenu_istn, 'teren przed robotami'),
+            ('Rzędna dna kanału',            ob.rzedna_dna_kanalu,  'spód rury — na tę rzędną układa się kanał'),
+            ('Rzędna dna studni (Rz.d.)',    ob.rzedna_dna_studni,  'dno osadnika/piaskownika — do tego kopiemy'),
+            ('Zagłębienie',                  ob.zaglebienie,        'teren proj. − rzędna dna kanału'),
+            ('Rzędna dna rowu',              ob.rzedna_dna_rowu,    'odbiornik przy wylocie'),
+          ] %}
+          {% for etykieta, wartosc, podpowiedz in wiersze %}
+          <tr>
+            <td>
+              {{ etykieta }}
+              <i class="bi bi-info-circle text-body-secondary small" data-bs-toggle="tooltip"
+                 title="{{ podpowiedz }}"></i>
+            </td>
+            <td class="liczba fw-semibold">{{ wartosc | liczba(2) }}</td>
+            <td style="width: 2rem">
+              {% if wartosc is not none %}
+                <button class="btn btn-sm btn-link p-0 text-body-secondary"
+                        data-kopiuj="{{ wartosc }}" title="Kopiuj"><i class="bi bi-clipboard"></i></button>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          <tr class="table-primary">
+            <td class="fw-semibold">Głębokość wykopu</td>
+            <td class="liczba fw-bold">{{ ob.glebokosc_wykopu | liczba(2) }}</td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="kafelek p-3 mt-3">
+      <h2 class="h6 text-uppercase text-body-secondary mb-3">Wymiary i materiał</h2>
+      <dl class="row mb-0 small">
+        <dt class="col-6">Średnica króćca</dt>
+        <dd class="col-6 liczba">{% if ob.dn_mm %}Ø{{ ob.dn_mm }} mm{% else %}—{% endif %}</dd>
+        <dt class="col-6">Średnica studni</dt>
+        <dd class="col-6 liczba">{% if ob.srednica_studni_mm %}DN{{ ob.srednica_studni_mm }}{% else %}—{% endif %}</dd>
+        <dt class="col-6">Materiał</dt>
+        <dd class="col-6">{{ ob.material or "—" }}</dd>
+        <dt class="col-6">Status</dt>
+        <dd class="col-6">{{ ob.status.value }}</dd>
+        <dt class="col-6">Źródło danych</dt>
+        <dd class="col-6">{{ ob.zrodlo.value }}</dd>
+        {% if ob.uwagi %}<dt class="col-6">Uwagi</dt><dd class="col-6">{{ ob.uwagi }}</dd>{% endif %}
+      </dl>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <div class="kafelek p-3">
+      <h2 class="h6 text-uppercase text-body-secondary mb-3">Odcinki przy tym obiekcie</h2>
+      <table class="table table-sm tabela-gesta mb-0">
+        <thead><tr><th>Odcinek</th><th class="text-end">Długość</th><th class="text-end">Ø</th>
+                   <th class="text-end">Spadek</th><th>Profil</th></tr></thead>
+        <tbody>
+        {% for o in ob.odcinki_wychodzace + ob.odcinki_wchodzace %}
+          <tr>
+            <td>
+              <a href="{{ url_for('main.obiekt', kod=o.obiekt_od.kod) }}">{{ o.obiekt_od.kod }}</a>
+              <i class="bi bi-arrow-right text-body-secondary"></i>
+              <a href="{{ url_for('main.obiekt', kod=o.obiekt_do.kod) }}">{{ o.obiekt_do.kod }}</a>
+            </td>
+            <td class="liczba">{{ o.dlugosc_m | liczba(2) }} m</td>
+            <td class="liczba">{% if o.dn_mm %}Ø{{ o.dn_mm }}{% endif %}</td>
+            <td class="liczba">{{ o.spadek_promile | liczba(1) }}‰</td>
+            <td>{% if o.profil %}<a href="{{ url_for('main.profil', profil_id=o.profil.id) }}">{{ o.profil.oznaczenie }}</a>{% endif %}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5" class="text-body-secondary">Brak odcinków.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="kafelek p-3 mt-3">
+      <h2 class="h6 text-uppercase text-body-secondary mb-3">
+        Włączenia i przyłącza <span class="badge text-bg-light">{{ polaczenia | length }}</span>
+      </h2>
+      <table class="table table-sm tabela-gesta mb-0">
+        <thead><tr><th>Kierunek</th><th>Obiekt</th><th class="text-end">Ø</th>
+                   <th class="text-end">Rzędna</th><th class="text-end">Kąt</th><th>Opis</th></tr></thead>
+        <tbody>
+        {% for c in polaczenia %}
+          <tr>
+            <td><span class="badge text-bg-light">{{ c.kierunek }}</span></td>
+            <td>{% if c.obiekt_zrodlowy_kod %}
+                  <a href="{{ url_for('main.obiekt', kod=c.obiekt_zrodlowy_kod) }}">{{ c.obiekt_zrodlowy_kod }}</a>
+                {% endif %}</td>
+            <td class="liczba">{% if c.dn_mm %}Ø{{ c.dn_mm }}{% endif %}</td>
+            <td class="liczba">{{ c.rzedna | liczba(2) }}</td>
+            <td class="liczba">{% if c.kat_stopnie %}{{ c.kat_stopnie | liczba(0) }}°{% endif %}
+                {% if c.oznaczenie_kanalu %}<small>({{ c.oznaczenie_kanalu }})</small>{% endif %}</td>
+            <td class="small text-body-secondary">{{ c.opis or "" }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="6" class="text-body-secondary">Brak zapisanych włączeń.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="kafelek p-3 mt-3">
+      <h2 class="h6 text-uppercase text-body-secondary mb-3">Występuje na profilach</h2>
+      <table class="table table-sm tabela-gesta mb-0">
+        <thead><tr><th>Profil</th><th class="text-end">Strona</th><th class="text-end">Pikietaż</th>
+                   <th class="text-end">Rz. dna na tym profilu</th><th>Opis</th></tr></thead>
+        <tbody>
+        {% for w in ob.wystapienia %}
+          <tr>
+            <td><a href="{{ url_for('main.profil', profil_id=w.profil.id) }}">{{ w.profil.oznaczenie }}</a></td>
+            <td class="liczba">{{ w.profil.sheet.nr_strony if w.profil.sheet else "" }}</td>
+            <td class="liczba">{{ w.hektometr | liczba(2) }}</td>
+            <td class="liczba">{{ w.rzedna_dna | liczba(2) }}</td>
+            <td class="small text-body-secondary">{{ w.opis or "" }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <p class="small text-body-secondary mb-0 mt-2">
+        Studnia ma tyle rzędnych dna, ile wchodzi do niej rur. W nagłówku pokazujemy
+        najniższą z nich — to rzędna odpływu.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

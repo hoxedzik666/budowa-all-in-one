@@ -1,0 +1,52 @@
+{# Trzy warianty pociecia odcinka na rury 3 m i 6 m. #}
+{% macro warianty_rur(rury) %}
+  {% if rury.uwaga %}
+    <div class="alert alert-warning py-2 px-3 small mb-2">
+      <i class="bi bi-info-circle"></i> {{ rury.uwaga }}
+    </div>
+  {% endif %}
+
+  {% if rury.warianty %}
+  <div class="table-responsive">
+    <table class="table table-sm tabela-gesta mb-2">
+      <thead class="table-light">
+        <tr>
+          <th>Wariant</th>
+          <th>Rury</th>
+          <th class="text-end">Sztuk</th>
+          <th class="text-end">Materiał</th>
+          <th class="text-end">Docinka</th>
+          <th class="text-end">Odpad</th>
+          <th class="text-end">Cięć</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for w in rury.warianty %}
+        <tr {% if w.nazwa == rury.zalecany %}class="table-primary"{% endif %}>
+          <td>
+            {% if w.nazwa == rury.zalecany %}<i class="bi bi-star-fill text-primary"></i>{% endif %}
+            {{ w.etykieta }}
+          </td>
+          <td class="fw-semibold">{{ w.opis_sztuk }}</td>
+          <td class="liczba">{{ w.sztuk_razem }}</td>
+          <td class="liczba">{{ w.material_m | liczba(2) }} m</td>
+          <td class="liczba">
+            {% if w.docinka_m %}<span class="text-warning-emphasis fw-semibold">{{ w.docinka_m | liczba(2) }} m</span>
+            {% else %}—{% endif %}
+          </td>
+          <td class="liczba">{% if w.odpad_m %}{{ w.odpad_m | liczba(2) }} m{% else %}—{% endif %}</td>
+          <td class="liczba">{{ w.liczba_ciec or "—" }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <p class="small text-body-secondary mb-0">
+    <strong>Docinka</strong> to kawałek, który faktycznie idzie do wykopu — odcinany
+    z całej rury. <strong>Odpad</strong> to reszta, która z tej rury zostaje.
+    Wariant oznaczony gwiazdką daje najmniej sztuk (a przy remisie — mniej odpadu).
+    Długość liczona oś–oś studni, wprost z profilu.
+  </p>
+  {% endif %}
+{% endmacro %}

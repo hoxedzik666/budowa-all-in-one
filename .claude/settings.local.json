@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ' *)",
+      "Bash(MSYS_NO_PATHCONV=1 docker compose up -d)",
+      "Bash(MSYS_NO_PATHCONV=1 docker compose exec -T web python -m flask init-db)",
+      "Bash(MSYS_NO_PATHCONV=1 docker compose exec -T web python -m flask utworz-admina)",
+      "Bash(MSYS_NO_PATHCONV=1 docker compose exec -T db psql -U budowa -d budowa -tAc ' *)",
+      "Bash(curl -s -b /tmp/c.txt -X POST http://localhost:8000/niwelator/ciag-rur/oblicz -H \"Content-Type: application/json\" -d '{\"od\":\"D114\",\"do\":\"D115\",\"rzedna_repera\":85.20,\"odczyt_wstecz\":1.432,\"h_karb\":0.500,\"tryb\":\"SCIANA\",\"krok\":\"6\"}')",
+      "Bash(PYTHONIOENCODING=utf-8 python -c ' *)",
+      "Bash(curl -s -b /tmp/c.txt -X POST http://localhost:8000/niwelator/ciag-rur/oblicz -H \"Content-Type: application/json\" -d '{\"od\":\"D114\",\"do\":\"D115\",\"rzedna_repera\":45.350,\"odczyt_wstecz\":1.432,\"h_karb\":0.500,\"tryb\":\"SCIANA\",\"krok\":\"6\"}')",
+      "Bash(MSYS_NO_PATHCONV=1 docker compose exec -T web python -m pytest -q --no-header)",
+      "Bash(grep -v \"Deprecation\\\\|importlib\\\\|^$\")",
+      "Bash(MSYS_NO_PATHCONV=1 docker compose exec -T web python -m pytest tests/test_auth.py::test_ekran_logowania_jest_dostepny_bez_sesji \"tests/test_auth.py::test_bez_logowania_wszystko_przekierowuje[/]\" -q --no-header -x)",
+      "Bash(docker exec *)"
+    ]
+  }
+}

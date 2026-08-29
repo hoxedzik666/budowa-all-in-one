@@ -1,0 +1,83 @@
+{% extends "layouts/base.html" %}
+{% block tytul %}Odcinki{% endblock %}
+
+{% block naglowek %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-0">Odcinki</h1>
+    <p class="text-body-secondary mb-0">
+      Odcinek to rura między dwoma obiektami — jedna średnica, jeden spadek, jedna długość.
+    </p>
+  </div>
+  <form class="d-flex gap-2" method="get">
+    <input class="form-control form-control-sm" name="szukaj" value="{{ szukaj }}"
+           placeholder="np. Wyl101 albo D155" style="min-width: 16rem">
+    <button class="btn btn-sm btn-primary">Szukaj</button>
+    {% if szukaj %}<a class="btn btn-sm btn-outline-secondary" href="{{ url_for('main.odcinki') }}">Wyczyść</a>{% endif %}
+  </form>
+</div>
+{% endblock %}
+
+{% block tresc %}
+<div class="kafelek p-0">
+  <div class="table-responsive">
+    <table class="table table-sm table-hover tabela-gesta mb-0" id="tabela-odcinkow">
+      <thead class="table-light">
+        <tr>
+          <th>Odcinek</th>
+          <th class="text-end">Długość [m]</th>
+          <th class="text-end">Ø [mm]</th>
+          <th class="text-end">Spadek</th>
+          <th class="text-end">Rz. dna od</th>
+          <th class="text-end">Rz. dna do</th>
+          <th class="text-end">Spadek wyliczony</th>
+          <th>Profil</th>
+          <th>Kierunek rysunku</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for o in odcinki %}
+        {% set rozjazd = o.spadek_wyliczony_promile is not none and o.spadek_promile is not none
+                         and (o.spadek_wyliczony_promile | abs - o.spadek_promile | float | abs) | abs > 1 %}
+        <tr {% if rozjazd %}class="table-warning"{% endif %}>
+          <td class="fw-semibold">
+            <a href="{{ url_for('main.obiekt', kod=o.obiekt_od.kod) }}">{{ o.obiekt_od.kod }}</a>
+            <i class="bi bi-arrow-right text-body-secondary"></i>
+            <a href="{{ url_for('main.obiekt', kod=o.obiekt_do.kod) }}">{{ o.obiekt_do.kod }}</a>
+          </td>
+          <td class="liczba">{{ o.dlugosc_m | liczba(2) }}</td>
+          <td class="liczba">{% if o.dn_mm %}Ø{{ o.dn_mm }}{% else %}—{% endif %}</td>
+          <td class="liczba">
+            {% if o.spadek_promile is not none %}
+              {{ o.spadek_promile | liczba(1) }}‰
+              <span class="text-body-secondary small">({{ o.spadek_procent | liczba(2) }}%)</span>
+            {% else %}—{% endif %}
+          </td>
+          <td class="liczba">{{ o.rzedna_dna_od | liczba(2) }}</td>
+          <td class="liczba">{{ o.rzedna_dna_do | liczba(2) }}</td>
+          <td class="liczba">
+            {% if o.spadek_wyliczony_promile is not none %}
+              {{ o.spadek_wyliczony_promile | abs | liczba(1) }}‰
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {% if o.profil %}
+              <a href="{{ url_for('main.profil', profil_id=o.profil.id) }}">{{ o.profil.oznaczenie }}</a>
+            {% endif %}
+          </td>
+          <td class="small text-body-secondary">
+            {{ (o.surowe or {}).get('kierunek_rysunku', '') | replace('_', ' ') }}
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="9" class="text-center text-body-secondary py-4">Brak odcinków.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<p class="small text-body-secondary mt-2">
+  Wiersz podświetlony na żółto = spadek z rysunku różni się od policzonego z rzędnych o ponad 1‰.
+  Zwykle oznacza to studnię, w której rury wchodzą na różnych rzędnych — warto sprawdzić w dokumentacji.
+</p>
+{% endblock %}

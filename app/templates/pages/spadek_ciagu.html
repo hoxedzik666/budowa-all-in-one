@@ -1,0 +1,206 @@
+{% extends "layouts/base.html" %}
+{% block tytul %}Spadek ciągu{% endblock %}
+
+{% block naglowek %}
+<div class="mb-3">
+  <h1 class="h3 mb-1">Spadek na ciągu rur</h1>
+  <p class="text-body-secondary mb-0">
+    Monter nie postawi łaty na cieku rury — stawia ją na <strong>górnym karbie</strong>.
+    Kalkulator dolicza tę różnicę i podaje, <strong>co ma zobaczyć osoba przy niwelatorze</strong>
+    w każdym miejscu ciągu.
+  </p>
+</div>
+{% endblock %}
+
+{% block tresc %}
+<div class="row g-3">
+  <div class="col-xl-4">
+    <form class="kafelek p-3" id="formularz-ciagu">
+
+      <h2 class="h6 text-uppercase text-body-secondary mb-3">1 · Ciąg rur</h2>
+      <div class="row g-2 mb-3">
+        <div class="col-6">
+          <label class="form-label">Od obiektu</label>
+          <input class="form-control" name="od" value="{{ od }}" placeholder="np. D155" required>
+        </div>
+        <div class="col-6">
+          <label class="form-label">Do obiektu <span class="text-body-secondary">(opcj.)</span></label>
+          <input class="form-control" name="do" value="{{ do }}" placeholder="koniec ciągu">
+        </div>
+      </div>
+
+      <h2 class="h6 text-uppercase text-body-secondary mb-3 mt-4">2 · Stanowisko niwelatora</h2>
+      <div class="mb-3">
+        <label class="form-label">Reper</label>
+        <input class="form-control" name="reper" id="pole-reper" list="lista-reperow" placeholder="np. o101">
+        <datalist id="lista-reperow">
+          {% for r in repery %}<option value="{{ r.nazwa }}">H = {{ r.h | liczba(4) }}</option>{% endfor %}
+        </datalist>
+      </div>
+      <div class="row g-2 mb-3">
+        <div class="col-6">
+          <label class="form-label">Rzędna repera</label>
+          <input class="form-control" name="rzedna_repera" id="pole-rzedna-repera" inputmode="decimal">
+        </div>
+        <div class="col-6">
+          <label class="form-label">Odczyt wstecz [m]</label>
+          <input class="form-control" name="odczyt_wstecz" inputmode="decimal" placeholder="1,432">
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">albo HI wprost [m n.p.m.]</label>
+        <input class="form-control" name="hi" inputmode="decimal"
+               placeholder="jeśli znasz wysokość celowej">
+      </div>
+
+      <h2 class="h6 text-uppercase text-body-secondary mb-3 mt-4">3 · Pomiary z wykopu</h2>
+      <div class="mb-3">
+        <label class="form-label">Rzeczywista rzędna dna kanału na starcie</label>
+        <input class="form-control" name="rzedna_dna_start" inputmode="decimal"
+               placeholder="puste = wartość projektowa z bazy">
+        <div class="form-text">To, co faktycznie wyszło w wykopie — bywa inne niż projekt.</div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Wysokość od cieku do górnego karba [m]</label>
+        <input class="form-control" name="h_karb" id="pole-karb" inputmode="decimal"
+               placeholder="np. 0,500">
+        <div class="form-text" id="podpowiedz-karb">
+          Tam, gdzie monter kładzie łatę. Podpowiedź podstawi się po wyliczeniu.
+        </div>
+      </div>
+
+      <h2 class="h6 text-uppercase text-body-secondary mb-3 mt-4">4 · Jak liczyć</h2>
+      <div class="mb-3">
+        <label class="form-label">Rzędne z dokumentacji odnoszą się do</label>
+        <select class="form-select" name="tryb">
+          <option value="SCIANA">ściany studni — spadek stromszy</option>
+          <option value="OS">osi studni — spadek bez zmian</option>
+        </select>
+        <div class="form-text">Oba warianty policzą się i tak — to wybór, który trafia do tabeli.</div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Łatę stawiamy co [m]</label>
+        <select class="form-select" name="krok">
+          <option value="3">3 m — co rurę krótką</option>
+          <option value="6">6 m — co rurę długą</option>
+          <option value="1">1 m — gęsto</option>
+          <option value="0">tylko początek i koniec</option>
+        </select>
+      </div>
+
+      <button class="btn btn-primary w-100"><i class="bi bi-calculator"></i> Policz ciąg</button>
+    </form>
+  </div>
+
+  <div class="col-xl-8">
+    <div id="wynik-ciagu">
+      <div class="kafelek p-4 text-body-secondary">
+        Wypełnij formularz po lewej. Wynikiem będzie tabela odczytów na łacie —
+        gotowa do odczytania przez radio osobie przy niwelatorze.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block skrypty %}
+<script>
+$(function () {
+  var repery = {{ repery | map(attribute='nazwa') | list | tojson_pl | safe }};
+  var wysokosci = {{ repery | map(attribute='h') | map('float') | list | tojson_pl | safe }};
+
+  $("#pole-reper").on("change input", function () {
+    var i = repery.indexOf($(this).val().trim());
+    if (i >= 0) $("#pole-rzedna-repera").val(String(wysokosci[i]).replace(".", ","));
+  });
+
+  $("#formularz-ciagu").on("submit", function (e) {
+    e.preventDefault();
+    var dane = {};
+    $.each($(this).serializeArray(), function (_, p) { dane[p.name] = p.value; });
+
+    $("#wynik-ciagu").html('<div class="kafelek p-4 text-body-secondary">Liczę…</div>');
+
+    $.ajax({
+      url: "{{ url_for('niwelator.ciag_rur_oblicz') }}",
+      method: "POST", contentType: "application/json",
+      data: JSON.stringify(dane)
+    }).done(function (w) {
+      if (w.podpowiedz_karb_m && !$("#pole-karb").val()) {
+        $("#pole-karb").val(String(w.podpowiedz_karb_m).replace(".", ","));
+        $("#podpowiedz-karb").html(
+          "Podstawiono <strong>" + pl(w.podpowiedz_karb_m, 3) +
+          " m</strong> (średnica zewnętrzna rury). Zmierz na budowie i popraw, jeśli trzeba.");
+      }
+      $("#wynik-ciagu").html(zbudujWynik(w));
+    }).fail(function (x) {
+      var b = (x.responseJSON && x.responseJSON.blad) || "Nie udało się policzyć.";
+      $("#wynik-ciagu").html('<div class="alert alert-warning">' + b + "</div>");
+    });
+  });
+
+  function kafelek(etykieta, wartosc, kolor, opis) {
+    return '<div class="col-6 col-md-3"><div class="kafelek p-2 h-100">' +
+      '<div class="etykieta">' + etykieta + "</div>" +
+      '<div class="wartosc text-' + (kolor || "body") + '">' + wartosc + "</div>" +
+      (opis ? '<div class="small text-body-secondary">' + opis + "</div>" : "") +
+      "</div></div>";
+  }
+
+  function zbudujWynik(w) {
+    var h = '<div class="kafelek p-3 mb-3">';
+    h += '<h2 class="h6 text-uppercase text-body-secondary mb-3">Podsumowanie ciągu</h2>';
+    h += '<div class="row g-2 mb-3">';
+    h += kafelek("Wysokość celowej (HI)", pl(w.hi, 4), "primary", "m n.p.m.");
+    h += kafelek("Długość oś–oś", pl(w.dlugosc_osiowa_m, 2), "body", "m z profilu");
+    h += kafelek("Długość rury", pl(w.dlugosc_rury_m, 2), "primary", "po odjęciu studni");
+    h += kafelek("Spadek całkowity", pl(w.spadek_calkowity_m, 3), "body", "m na całym ciągu");
+    h += "</div>";
+    h += '<div class="row g-2">';
+    h += kafelek("Rzędna startowa", pl(w.rzedna_startowa, 3), "body", "m n.p.m.");
+    h += kafelek("Rzędna końcowa", pl(w.rzedna_koncowa, 3), "body", "m n.p.m.");
+    h += kafelek("Średni spadek", pl(w.sredni_spadek_promile, 2) + "‰", "body", "na rurze");
+    h += kafelek("Karb nad ciekiem", pl(w.h_karb_m, 3), "body", "m — gdzie łata");
+    h += "</div></div>";
+
+    if (w.uwagi && w.uwagi.length) {
+      h += '<div class="alert alert-warning"><ul class="mb-0 ps-3">';
+      $.each(w.uwagi, function (_, u) { h += "<li>" + u + "</li>"; });
+      h += "</ul></div>";
+    }
+
+    $.each(w.odcinki, function (_, o) {
+      h += '<div class="kafelek p-0 mb-3">';
+      h += '<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 p-3 border-bottom">';
+      h += '<h3 class="h6 mb-0">' + o.od + " → " + o.do + "</h3>";
+      h += '<div class="d-flex flex-wrap gap-2 small">';
+      h += '<span class="badge text-bg-dark">oś ' + pl(o.dlugosc_osiowa_m, 2) + " m</span>";
+      h += '<span class="badge text-bg-primary">rura ' + pl(o.dlugosc_rury_m, 2) + " m</span>";
+      if (o.dn_mm) h += '<span class="badge text-bg-secondary">Ø' + o.dn_mm + "</span>";
+      h += '<span class="badge text-bg-light">proj. ' + pl(o.spadek_projektowy_promile, 1) + "‰</span>";
+      h += '<span class="badge ' + (w.tryb === "SCIANA" ? "text-bg-success" : "text-bg-light") +
+           '">ściana ' + pl(o.spadek_sciana_promile, 2) + "‰</span>";
+      h += '<span class="badge ' + (w.tryb === "OS" ? "text-bg-success" : "text-bg-light") +
+           '">oś ' + pl(o.spadek_os_promile, 2) + "‰</span>";
+      h += "</div></div>";
+
+      h += '<div class="table-responsive"><table class="table table-sm tabela-gesta mb-0">';
+      h += "<thead class='table-light'><tr><th>Odległość</th><th class='text-end'>Rzędna dna</th>" +
+           "<th class='text-end'>Rzędna karbu</th><th class='text-end'>ODCZYT NA ŁACIE</th><th></th></tr></thead><tbody>";
+      $.each(o.punkty, function (_, p) {
+        h += "<tr" + (p.wykonalny ? "" : ' class="table-warning"') + ">";
+        h += '<td class="liczba">' + pl(p.odleglosc_m, 2) + " m</td>";
+        h += '<td class="liczba">' + pl(p.rzedna_dna, 3) + "</td>";
+        h += '<td class="liczba">' + pl(p.rzedna_laty, 3) + "</td>";
+        h += '<td class="liczba fw-bold fs-6">' + pl(p.odczyt, 3) + " m</td>";
+        h += '<td class="small text-body-secondary">' + (p.opis || "") +
+             (p.wykonalny ? "" : " <span class='text-danger'>poza łatą</span>") + "</td>";
+        h += "</tr>";
+      });
+      h += "</tbody></table></div></div>";
+    });
+    return h;
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,28 @@
+:root {
+  --kolor-dno: #0d6efd;
+  --kolor-teren: #6c757d;
+  --kolor-alarm: #dc3545;
+}
+
+.tabela-gesta td, .tabela-gesta th {
+  padding: .35rem .5rem;
+  font-size: .875rem;
+  vertical-align: middle;
+}
+
+.liczba { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+
+.kafelek { border: 1px solid var(--bs-border-color); border-radius: .5rem; background: var(--bs-body-bg); }
+.kafelek .wartosc { font-size: 1.6rem; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.kafelek .etykieta { font-size: .8rem; color: var(--bs-secondary-color); text-transform: uppercase; letter-spacing: .03em; }
+
+.znacznik-typ { font-size: .7rem; padding: .15rem .45rem; border-radius: .25rem; font-weight: 600; }
+
+/* Miniatura profilu podluznego rysowana w SVG */
+.profil-svg { width: 100%; height: auto; background: #fff; border-radius: .375rem; }
+.profil-svg .linia-terenu { stroke: var(--kolor-teren); stroke-width: 1.5; fill: none; stroke-dasharray: 4 3; }
+.profil-svg .linia-dna { stroke: var(--kolor-dno); stroke-width: 2.5; fill: none; }
+.profil-svg .wezel { fill: #fff; stroke: var(--kolor-dno); stroke-width: 1.5; }
+.profil-svg text { font-size: 9px; fill: #212529; }
+
+.ostrzezenie-import { font-family: var(--bs-font-monospace); font-size: .8rem; }

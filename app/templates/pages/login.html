@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pl" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Logowanie — Budowa wod-kan</title>
+  <script>
+    (function () {
+      try {
+        var m = localStorage.getItem("motyw") || "domyslny";
+        var s = localStorage.getItem("schemat") || "auto";
+        if (s === "auto") {
+          s = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        if (m === "warsztat") s = "dark";
+        if (m === "slonce") s = "light";
+        document.documentElement.setAttribute("data-bs-theme", s);
+        document.documentElement.setAttribute("data-motyw", m);
+      } catch (e) { /* brak localStorage */ }
+    })();
+  </script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/css/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/font/bootstrap-icons.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/motywy.css') }}">
+</head>
+<body class="bg-body-tertiary">
+
+<main class="container" style="max-width: 26rem; padding-top: 8vh;">
+  <div class="text-center mb-4">
+    <h1 class="h4 mb-1">
+      <i class="bi bi-diagram-3 text-primary"></i>
+      Budowa <span class="text-primary">wod-kan</span>
+    </h1>
+    <p class="text-body-secondary small mb-0">
+      Obwodnica Krosna Odrzańskiego, DK29
+    </p>
+  </div>
+
+  {% with komunikaty = get_flashed_messages(with_categories=true) %}
+    {% for kategoria, tresc in komunikaty %}
+      <div class="alert alert-{{ kategoria }}">{{ tresc }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <form method="post" class="kafelek p-4">
+    <div class="mb-3">
+      <label class="form-label" for="pole-login">Login</label>
+      <input class="form-control" id="pole-login" name="login" value="{{ login }}"
+             autocomplete="username" autofocus required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="pole-haslo">Hasło</label>
+      <input class="form-control" id="pole-haslo" name="haslo" type="password"
+             autocomplete="current-password" required>
+    </div>
+    <div class="form-check mb-3">
+      <input class="form-check-input" type="checkbox" name="pamietaj" id="pamietaj" value="1">
+      <label class="form-check-label small" for="pamietaj">Zapamiętaj mnie na tym urządzeniu</label>
+    </div>
+    <button class="btn btn-primary w-100">
+      <i class="bi bi-box-arrow-in-right"></i> Zaloguj
+    </button>
+  </form>
+
+  <p class="text-body-secondary small text-center mt-3 mb-0">
+    Narzędzie zawiera dane wykonawcze budowy — dostęp tylko dla ekipy.
+  </p>
+</main>
+
+</body>
+</html>

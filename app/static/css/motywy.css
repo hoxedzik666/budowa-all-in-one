@@ -1,0 +1,133 @@
+/* Motywy graficzne.
+ *
+ * Dwie niezalezne osie, ustawiane na <html>:
+ *   data-bs-theme = light | dark      -> mechanizm Bootstrapa 5.3
+ *   data-motyw    = domyslny | slonce | warsztat
+ *   data-teren    = 1                 -> tryb terenowy, laczy sie z kazdym motywem
+ *
+ * Dzieki rozdzieleniu "tryb terenowy" (rozmiary) od kolorystyki nie trzeba
+ * mnozyc wariantow: 3 motywy x wlaczony/wylaczony teren = 6 kombinacji z 4 regul.
+ */
+
+/* ---------------------------------------------------------------- SLONCE
+ * Do czytania telefonu w pelnym sloncu na budowie. Czern na bieli, grube
+ * obramowania, wyrazniejsze liczby - kontrast wazniejszy niz elegancja.
+ */
+[data-motyw="slonce"] {
+  --bs-body-bg: #ffffff;
+  --bs-body-color: #000000;
+  --bs-secondary-color: #333333;
+  --bs-border-color: #000000;
+  --bs-border-width: 2px;
+  --bs-primary: #0033aa;
+  --bs-link-color: #0033aa;
+  --bs-link-hover-color: #001f66;
+  --bs-tertiary-bg: #ffffff;
+  --bs-secondary-bg: #f2f2f2;
+}
+
+[data-motyw="slonce"] body { background: #ffffff !important; }
+
+[data-motyw="slonce"] .kafelek {
+  border: 2px solid #000000;
+  background: #ffffff;
+}
+
+[data-motyw="slonce"] .liczba,
+[data-motyw="slonce"] .wartosc {
+  font-weight: 700;
+  color: #000000;
+}
+
+[data-motyw="slonce"] .table > :not(caption) > * > * {
+  border-bottom-width: 2px;
+  border-color: #000000;
+}
+
+[data-motyw="slonce"] .text-body-secondary { color: #333333 !important; }
+[data-motyw="slonce"] .badge { border: 1px solid #000000; }
+
+/* -------------------------------------------------------------- WARSZTAT
+ * Ciemne tlo z bursztynowa kolorystyka zamiast niebieskiej - mniej meczy
+ * oczy po zmroku i nie psuje adaptacji wzroku do ciemnosci.
+ */
+[data-motyw="warsztat"] {
+  --bs-body-bg: #16130e;
+  --bs-body-color: #f0d9a8;
+  --bs-secondary-color: #b39a6d;
+  --bs-border-color: #4a3c26;
+  --bs-primary: #e0a733;
+  --bs-primary-rgb: 224, 167, 51;
+  --bs-link-color: #e8b74f;
+  --bs-link-hover-color: #f5cd7a;
+  --bs-body-bg-rgb: 22, 19, 14;
+  --bs-tertiary-bg: #1e1a13;
+  --bs-secondary-bg: #241f17;
+  --bs-emphasis-color: #fdf0d5;
+}
+
+[data-motyw="warsztat"] body { background: #16130e !important; }
+
+[data-motyw="warsztat"] .kafelek {
+  background: #1e1a13;
+  border-color: #4a3c26;
+}
+
+[data-motyw="warsztat"] .navbar.bg-dark { background-color: #0f0d09 !important; }
+[data-motyw="warsztat"] .table-light,
+[data-motyw="warsztat"] .table > thead { --bs-table-bg: #241f17; color: #f0d9a8; }
+[data-motyw="warsztat"] .text-info { color: #e8b74f !important; }
+[data-motyw="warsztat"] .btn-primary {
+  --bs-btn-bg: #a8791f;
+  --bs-btn-border-color: #a8791f;
+  --bs-btn-hover-bg: #c28f2c;
+  --bs-btn-hover-border-color: #c28f2c;
+  --bs-btn-color: #16130e;
+  --bs-btn-hover-color: #16130e;
+}
+[data-motyw="warsztat"] .profil-svg { background: #f7ecd8; }
+
+/* ---------------------------------------------------------- TRYB TERENOWY
+ * Do obslugi w rekawicach roboczych: wieksza czcionka, wyzsze wiersze,
+ * wieksze pola dotykowe. Niezalezny od kolorystyki.
+ */
+[data-teren="1"] {
+  font-size: 1.125rem;
+}
+
+[data-teren="1"] .tabela-gesta td,
+[data-teren="1"] .tabela-gesta th {
+  padding: 0.7rem 0.75rem;
+  font-size: 1rem;
+}
+
+[data-teren="1"] .btn,
+[data-teren="1"] .form-control,
+[data-teren="1"] .form-select {
+  min-height: 3rem;
+  font-size: 1.05rem;
+}
+
+[data-teren="1"] .btn-sm,
+[data-teren="1"] .form-control-sm,
+[data-teren="1"] .form-select-sm {
+  min-height: 2.6rem;
+  font-size: 1rem;
+}
+
+[data-teren="1"] .kafelek .wartosc { font-size: 2.1rem; }
+[data-teren="1"] .kafelek .etykieta { font-size: 0.95rem; }
+[data-teren="1"] .nav-link { padding: 0.7rem 1rem; }
+[data-teren="1"] .badge { font-size: 0.85em; padding: 0.4em 0.65em; }
+[data-teren="1"] .small, [data-teren="1"] small { font-size: 0.95rem; }
+
+/* Elementy klikalne w tabelach musza byc realnie trafialne palcem. */
+[data-teren="1"] .table a,
+[data-teren="1"] .table button { display: inline-block; min-height: 2.2rem; line-height: 2.2rem; }
+
+/* --------------------------------------------------------- PRZELACZNIK UI */
+.przelacznik-motywu .dropdown-item.aktywny::after {
+  content: "✓";
+  float: right;
+  font-weight: 700;
+}

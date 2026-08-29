@@ -1,0 +1,56 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: budowa_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-budowa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-budowa}
+      POSTGRES_DB: ${POSTGRES_DB:-budowa}
+      TZ: Europe/Warsaw
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-budowa} -d ${POSTGRES_DB:-budowa}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  web:
+    build: .
+    container_name: budowa_web
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      FLASK_APP: wsgi.py
+      FLASK_ENV: ${FLASK_ENV:-development}
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-budowa}:${POSTGRES_PASSWORD:-budowa}@db:5432/${POSTGRES_DB:-budowa}
+      DOCS_DIR: /srv/app/docs
+      TZ: Europe/Warsaw
+    volumes:
+      - .:/srv/app
+    ports:
+      - "${WEB_PORT:-8000}:8000"
+    command: >
+      sh -c "python -m flask db-wait &&
+             python -m flask init-db &&
+             gunicorn --bind 0.0.0.0:8000 --workers 2 --timeout 300 --reload wsgi:app"
+
+  adminer:
+    image: adminer:latest
+    container_name: budowa_adminer
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "${ADMINER_PORT:-8080}:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+
+volumes:
+  pgdata:

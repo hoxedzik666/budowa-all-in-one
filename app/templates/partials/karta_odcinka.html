@@ -1,0 +1,199 @@
+{% from "partials/rysunek.html" import rysunek_profilu %}
+{% from "partials/warianty_rur.html" import warianty_rur %}
+
+{# Pelna karta odcinka: rysunek profilu, tabelka, materialy, rury, mapka. #}
+{% macro karta_odcinka(o, wykaz) %}
+<div class="kafelek p-0 mb-4">
+
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 p-3 border-bottom">
+    <h2 class="h5 mb-0">
+      <i class="bi bi-rulers text-primary"></i>
+      <a href="{{ url_for('main.obiekt', kod=o.obiekt_od.kod) }}">{{ o.obiekt_od.kod }}</a>
+      <i class="bi bi-arrow-right text-body-secondary"></i>
+      <a href="{{ url_for('main.obiekt', kod=o.obiekt_do.kod) }}">{{ o.obiekt_do.kod }}</a>
+    </h2>
+    <div class="d-flex flex-wrap gap-2 align-items-center small">
+      <span class="badge text-bg-dark">{{ o.dlugosc_m | liczba(2) }} m</span>
+      {% if o.dn_mm %}<span class="badge text-bg-secondary">Ø{{ o.dn_mm }}</span>{% endif %}
+      {% if wykaz.dn_katalogowe and wykaz.dn_katalogowe != o.dn_mm %}
+        <span class="badge text-bg-light">katalog OD{{ wykaz.dn_katalogowe }}</span>
+      {% endif %}
+      {% if o.spadek_promile is not none %}
+        <span class="badge text-bg-info">{{ o.spadek_promile | liczba(1) }}‰ / {{ o.spadek_procent | liczba(2) }}%</span>
+      {% endif %}
+      {% if wykaz.klasa_sn %}<span class="badge text-bg-light">{{ wykaz.klasa_sn }}</span>{% endif %}
+      {% if o.profil %}
+        <a class="btn btn-sm btn-outline-secondary py-0"
+           href="{{ url_for('main.profil', profil_id=o.profil.id) }}">
+          profil {{ o.profil.oznaczenie }}
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if o.podejrzany %}
+  <div class="px-3 pt-3">
+    <div class="alert alert-danger py-2 px-3 mb-2">
+      <i class="bi bi-exclamation-octagon-fill"></i>
+      <strong>Danym tego odcinka nie można ufać.</strong>
+      {{ o.powod_podejrzenia }}
+      <div class="small mt-1">
+        Sprawdź w dokumentacji, zanim policzysz z tego materiał albo wytyczysz spadek.
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if wykaz.braki %}
+  <div class="px-3 pt-3">
+    {% for b in wykaz.braki %}
+      <div class="alert alert-warning py-2 px-3 small mb-2"><i class="bi bi-exclamation-triangle"></i> {{ b }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# --- rysunek profilu --- #}
+  <div class="p-3 border-bottom">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+      <h3 class="h6 text-uppercase text-body-secondary mb-0">Profil podłużny</h3>
+      {% if o.profil and o.profil.sheet %}
+        <button class="btn btn-sm btn-outline-primary py-0" data-wycinek="{{ o.id }}"
+                data-adres="{{ url_for('main.wycinek_odcinka_png', od=o.obiekt_od.kod, do_=o.obiekt_do.kod) }}"
+                data-pdf="{{ url_for('main.wycinek_odcinka_pdf', od=o.obiekt_od.kod, do_=o.obiekt_do.kod) }}">
+          <i class="bi bi-file-earmark-image"></i> Sprawdź w oryginale
+        </button>
+      {% endif %}
+    </div>
+    {% if o.profil %}
+      {{ rysunek_profilu(o.profil) }}
+    {% else %}
+      <p class="text-body-secondary mb-0">Ten odcinek nie ma przypisanego profilu.</p>
+    {% endif %}
+
+    {# Wycinek z oryginalnego PDF-a - wycinany dopiero po klinieciu. #}
+    <div id="wycinek-{{ o.id }}" class="d-none mt-3">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="small text-body-secondary">
+          Fragment oryginału — te same liczby, prosto z rysunku projektanta.
+        </span>
+        <a class="btn btn-sm btn-outline-secondary py-0" target="_blank" rel="noopener"
+           href="{{ url_for('main.wycinek_odcinka_pdf', od=o.obiekt_od.kod, do_=o.obiekt_do.kod) }}">
+          <i class="bi bi-filetype-pdf"></i> PDF
+        </a>
+      </div>
+      <div style="overflow: auto; max-height: 60vh" class="border rounded bg-white p-1">
+        <img alt="Oryginalny rysunek odcinka {{ o.nazwa }}"
+             style="display: block; max-width: none; height: auto">
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-0">
+    {# --- tabelka odcinka --- #}
+    <div class="col-lg-5 border-end">
+      <div class="p-3">
+        <h3 class="h6 text-uppercase text-body-secondary mb-2">Dane odcinka</h3>
+        <table class="table table-sm tabela-gesta mb-3">
+          <tbody>
+            <tr><td>Długość (oś–oś)</td><td class="liczba fw-semibold">{{ o.dlugosc_m | liczba(2) }} m</td></tr>
+            <tr><td>Średnica</td><td class="liczba">{% if o.dn_mm %}Ø{{ o.dn_mm }} mm{% else %}—{% endif %}</td></tr>
+            <tr><td>Spadek</td><td class="liczba">{{ o.spadek_promile | liczba(1) }}‰</td></tr>
+            <tr><td>Rzędna dna — {{ o.obiekt_od.kod }}</td><td class="liczba">{{ o.rzedna_dna_od | liczba(2) }}</td></tr>
+            <tr><td>Rzędna dna — {{ o.obiekt_do.kod }}</td><td class="liczba">{{ o.rzedna_dna_do | liczba(2) }}</td></tr>
+            <tr><td>Spadek z rzędnych</td>
+                <td class="liczba">
+                  {% if o.spadek_wyliczony_promile is not none %}
+                    {{ o.spadek_wyliczony_promile | liczba(1) }}‰
+                    {% if o.rozjazd_spadku_promile and o.rozjazd_spadku_promile > 5 %}
+                      <span class="badge text-bg-warning" title="Różnica wobec spadku z rysunku">
+                        ±{{ o.rozjazd_spadku_promile | liczba(1) }}
+                      </span>
+                    {% endif %}
+                  {% else %}—{% endif %}
+                </td></tr>
+            <tr><td>Kierunek rysunku</td>
+                <td class="text-end small text-body-secondary">
+                  {{ (o.kierunek_rysunku or "—") | replace('_', ' ') }}
+                </td></tr>
+          </tbody>
+        </table>
+
+        <h3 class="h6 text-uppercase text-body-secondary mb-2">Obiekty na odcinku</h3>
+        <table class="table table-sm tabela-gesta mb-0">
+          <thead class="table-light">
+            <tr><th>Kod</th><th>Element</th><th class="text-end">DN</th><th class="text-end">Głęb. wykopu</th></tr>
+          </thead>
+          <tbody>
+          {% for w in wykaz.obiekty %}
+            <tr>
+              <td class="fw-semibold">
+                <a href="{{ url_for('szukaj.szukaj', q=w.kod) }}">{{ w.kod }}</a>
+                <span class="text-body-secondary small">({{ w.rola }})</span>
+              </td>
+              <td>{{ w.nazwa_materialowa }}</td>
+              <td class="liczba">{% if w.srednica_studni_mm %}DN{{ w.srednica_studni_mm }}{% else %}—{% endif %}</td>
+              <td class="liczba fw-semibold">{{ w.glebokosc_wykopu | liczba(2) }} m</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {# --- rury i materialy --- #}
+    <div class="col-lg-7">
+      <div class="p-3">
+        <h3 class="h6 text-uppercase text-body-secondary mb-2">
+          Zapotrzebowanie na rury
+          <span class="text-body-secondary text-lowercase fw-normal">— wykonawca ma rury 3 m i 6 m</span>
+        </h3>
+        {{ warianty_rur(wykaz.rury) }}
+
+        {% if wykaz.katalog %}
+        <h3 class="h6 text-uppercase text-body-secondary mt-3 mb-2">
+          Pozycje z arkusza materiałowego
+        </h3>
+        <div class="table-responsive">
+          <table class="table table-sm tabela-gesta mb-0">
+            <thead class="table-light">
+              <tr><th>Pozycja</th><th class="text-end">Sztuka</th><th class="text-end">SN</th>
+                  <th class="text-end">Projekt</th><th class="text-end">Dojechało</th><th>WZ</th></tr>
+            </thead>
+            <tbody>
+            {% for k in wykaz.katalog %}
+              <tr>
+                <td class="small">{{ k.opis_pozycji }}</td>
+                <td class="liczba">{{ k.dlugosc_sztuki_m | liczba(0) }} m</td>
+                <td class="liczba">{{ k.klasa_sn or "—" }}</td>
+                <td class="liczba">{{ k.ilosc_projekt_m | liczba(1) }} m</td>
+                <td class="liczba {% if not k.ilosc_dostarczona_m %}text-body-secondary{% endif %}">
+                  {% if k.ilosc_dostarczona_m %}
+                    {{ k.ilosc_dostarczona_m | liczba(1) }} m
+                    <span class="small text-body-secondary">({{ k.sztuk_dostarczonych }} szt.)</span>
+                  {% else %}brak{% endif %}
+                </td>
+                <td class="small text-body-secondary">{{ (k.nr_wz or "")[:22] }}</td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p class="small text-body-secondary mb-0 mt-2">
+          Arkusz <code>RURY</code> to magazyn całej budowy — ilości dotyczą całego zadania,
+          nie tego odcinka. Zapotrzebowanie odcinka liczy tabela wyżej.
+        </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# --- mapka --- #}
+  <div class="p-3 border-top">
+    <h3 class="h6 text-uppercase text-body-secondary mb-2">Plan sytuacyjny</h3>
+    <div id="mapka-{{ o.id }}" data-mapka="{{ url_for('mapa.odcinek_png', od=o.obiekt_od.kod, do_=o.obiekt_do.kod) }}"
+         data-od="{{ o.obiekt_od.kod }}" data-do="{{ o.obiekt_do.kod }}">
+      <div class="text-body-secondary small">Sprawdzam, czy odcinek ma wskazaną pozycję na planie…</div>
+    </div>
+  </div>
+</div>
+{% endmacro %}

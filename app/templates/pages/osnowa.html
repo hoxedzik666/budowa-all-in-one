@@ -1,0 +1,44 @@
+{% extends "layouts/base.html" %}
+{% block tytul %}Osnowa{% endblock %}
+
+{% block naglowek %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-0">Osnowa geodezyjna <span class="text-body-secondary fs-6">({{ punkty | length }} punktów)</span></h1>
+    <p class="text-body-secondary mb-0">
+      Repery robocze — punkty o znanej rzędnej, od których zaczyna się każdy pomiar niwelatorem.
+      Układ PL-2000 strefa 5.
+    </p>
+  </div>
+  <input class="form-control form-control-sm" style="max-width: 16rem"
+         data-filtr-tabeli="#tabela-osnowy" placeholder="filtruj po nazwie">
+</div>
+{% endblock %}
+
+{% block tresc %}
+<div class="kafelek p-0">
+  <div class="table-responsive">
+    <table class="table table-sm table-hover tabela-gesta mb-0" id="tabela-osnowy">
+      <thead class="table-light">
+        <tr><th>Nazwa</th><th class="text-end">X [m]</th><th class="text-end">Y [m]</th>
+            <th class="text-end">H [m n.p.m.]</th><th>Układ</th><th></th></tr>
+      </thead>
+      <tbody>
+      {% for p in punkty %}
+        <tr>
+          <td class="fw-semibold">{{ p.nazwa }}</td>
+          <td class="liczba">{{ p.x | liczba(3) }}</td>
+          <td class="liczba">{{ p.y | liczba(3) }}</td>
+          <td class="liczba fw-semibold">{{ p.h | liczba(4) }}</td>
+          <td class="small text-body-secondary">{{ p.uklad }}</td>
+          <td>
+            <a class="btn btn-sm btn-link p-0" href="{{ url_for('niwelator.widok') }}?reper={{ p.nazwa }}"
+               title="Użyj w kalkulatorze"><i class="bi bi-binoculars"></i></a>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

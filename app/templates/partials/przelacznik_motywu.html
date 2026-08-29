@@ -1,0 +1,48 @@
+{# Przelacznik motywu. Dwie niezalezne osie: kolorystyka i tryb terenowy. #}
+<div class="dropdown przelacznik-motywu">
+  <button class="btn btn-sm btn-outline-light dropdown-toggle" data-bs-toggle="dropdown"
+          aria-expanded="false" title="Motyw graficzny">
+    <i class="bi bi-palette"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end" style="min-width: 15rem">
+    <li><h6 class="dropdown-header">Kolorystyka</h6></li>
+    {% set motywy = [
+      ('domyslny', 'Domyślny',            'circle-half',  'jasny, ciemny albo wg systemu'),
+      ('slonce',   'Wysoki kontrast',     'brightness-high', 'do czytania w pełnym słońcu'),
+      ('warsztat', 'Nocny warsztat',      'moon-stars',   'bursztynowy, do pracy po zmroku'),
+    ] %}
+    {% for klucz, nazwa, ikona, opis in motywy %}
+      <li>
+        <button class="dropdown-item" data-motyw="{{ klucz }}">
+          <i class="bi bi-{{ ikona }}"></i> {{ nazwa }}
+          <div class="small text-body-secondary ms-4">{{ opis }}</div>
+        </button>
+      </li>
+    {% endfor %}
+
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header">Schemat (dla motywu domyślnego)</h6></li>
+    {% for klucz, nazwa, ikona in [('auto','Wg systemu','circle-half'),
+                                   ('light','Jasny','sun'),
+                                   ('dark','Ciemny','moon')] %}
+      <li>
+        <button class="dropdown-item" data-schemat="{{ klucz }}">
+          <i class="bi bi-{{ ikona }}"></i> {{ nazwa }}
+        </button>
+      </li>
+    {% endfor %}
+
+    <li><hr class="dropdown-divider"></li>
+    <li>
+      <div class="px-3 py-1">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="przelacznik-teren">
+          <label class="form-check-label" for="przelacznik-teren">
+            Tryb terenowy
+            <div class="small text-body-secondary">większe elementy — do obsługi w rękawicach</div>
+          </label>
+        </div>
+      </div>
+    </li>
+  </ul>
+</div>

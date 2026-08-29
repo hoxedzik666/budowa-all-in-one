@@ -1,0 +1,146 @@
+{% extends "layouts/base.html" %}
+{% block tytul %}Zadania{% endblock %}
+
+{% block naglowek %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-1">Zadania</h1>
+    <p class="text-body-secondary mb-0">
+      Zadanie bez przypisanej osoby jest <strong>globalne</strong> — widzi je cała ekipa.
+      Zadanie można powiązać z obiektem (<code>D155</code>) albo odcinkiem (<code>Wyl101-D155</code>).
+    </p>
+  </div>
+  <form class="d-flex gap-2" method="get">
+    <select name="zakres" class="form-select form-select-sm" onchange="this.form.submit()">
+      {% for k, n in [('wszystkie','Wszystkie'), ('moje','Moje'), ('globalne','Globalne')] %}
+        <option value="{{ k }}" {% if zakres == k %}selected{% endif %}>{{ n }}</option>
+      {% endfor %}
+    </select>
+    <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+      <option value="otwarte" {% if status == 'otwarte' %}selected{% endif %}>Otwarte</option>
+      <option value="wszystkie" {% if status == 'wszystkie' %}selected{% endif %}>Wszystkie</option>
+      {% for s in statusy %}
+        <option value="{{ s.name }}" {% if status == s.name %}selected{% endif %}>{{ s.value }}</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+{% endblock %}
+
+{% block tresc %}
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="kafelek p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover tabela-gesta mb-0">
+          <thead class="table-light">
+            <tr><th>Zadanie</th><th>Dotyczy</th><th>Przypisane</th>
+                <th>Priorytet</th><th>Termin</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody>
+          {% for z in zadania %}
+            <tr {% if z.po_terminie %}class="table-warning"{% endif %}>
+              <td>
+                <div class="fw-semibold">{{ z.tytul }}</div>
+                {% if z.opis %}<div class="small text-body-secondary">{{ z.opis[:120] }}</div>{% endif %}
+                <div class="small text-body-secondary">dodał: {{ z.autor.login if z.autor else "—" }}</div>
+              </td>
+              <td class="small">
+                {% if z.czego_dotyczy %}
+                  <a href="{{ url_for('szukaj.szukaj', q=z.czego_dotyczy.split('-')[0]) }}">
+                    {{ z.czego_dotyczy }}</a>
+                {% else %}—{% endif %}
+              </td>
+              <td>
+                {% if z.globalne %}
+                  <span class="badge text-bg-info">globalne</span>
+                {% else %}
+                  {{ z.przypisany_do.login if z.przypisany_do else "—" }}
+                {% endif %}
+              </td>
+              <td>
+                {% set kolory = {'NISKI':'secondary','ZWYKLY':'light','WYSOKI':'warning','PILNY':'danger'} %}
+                <span class="badge text-bg-{{ kolory.get(z.priorytet.name, 'light') }}">
+                  {{ z.priorytet.value | lower }}
+                </span>
+              </td>
+              <td class="small {% if z.po_terminie %}fw-semibold text-danger{% endif %}">
+                {{ z.termin.strftime("%Y-%m-%d") if z.termin else "—" }}
+              </td>
+              <td>
+                <form method="post" action="{{ url_for('zadania.zmien_status', zid=z.id) }}">
+                  <select name="status" class="form-select form-select-sm" style="width: 8.5rem"
+                          onchange="this.form.submit()">
+                    {% for s in statusy %}
+                      <option value="{{ s.name }}" {% if z.status == s %}selected{% endif %}>
+                        {{ s.value | replace('_', ' ') | lower }}</option>
+                    {% endfor %}
+                  </select>
+                </form>
+              </td>
+              <td>
+                {% if current_user.jest_adminem or z.autor_id == current_user.id %}
+                  <form method="post" action="{{ url_for('zadania.usun', zid=z.id) }}">
+                    <button class="btn btn-sm btn-link text-danger p-0" title="Usuń">
+                      <i class="bi bi-trash"></i></button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="7" class="text-center text-body-secondary py-4">
+              Nic tu nie ma. Dodaj pierwsze zadanie po prawej.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <form class="kafelek p-3" method="post" action="{{ url_for('zadania.dodaj') }}">
+      <h2 class="h6 text-uppercase text-body-secondary mb-3">Nowe zadanie</h2>
+      <div class="mb-3">
+        <label class="form-label">Tytuł</label>
+        <input class="form-control" name="tytul" required
+               placeholder="np. wyregulować właz na D155">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Opis</label>
+        <textarea class="form-control" name="opis" rows="2" placeholder="opcjonalnie"></textarea>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Dotyczy obiektu / odcinka</label>
+        <input class="form-control" name="dotyczy" placeholder="D155 albo Wyl101-D155">
+      </div>
+      <div class="row g-2 mb-3">
+        <div class="col-6">
+          <label class="form-label">Priorytet</label>
+          <select class="form-select" name="priorytet">
+            {% for p in priorytety %}
+              <option value="{{ p.name }}" {% if p.name == 'ZWYKLY' %}selected{% endif %}>
+                {{ p.value | lower }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6">
+          <label class="form-label">Termin</label>
+          <input class="form-control" type="date" name="termin">
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Przypisz do</label>
+        <select class="form-select" name="przypisany_do_id">
+          <option value="">— globalne, dla całej ekipy —</option>
+          {% for u in konta %}
+            {% if current_user.moze_przydzielac or u.id == current_user.id %}
+              <option value="{{ u.id }}">{{ u.login }}{% if u.imie_nazwisko %} — {{ u.imie_nazwisko }}{% endif %}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+      <button class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> Dodaj zadanie</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

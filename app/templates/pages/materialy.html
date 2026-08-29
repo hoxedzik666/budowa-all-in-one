@@ -1,0 +1,45 @@
+{% extends "layouts/base.html" %}
+{% block tytul %}Materiały{% endblock %}
+
+{% block naglowek %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-0">Gospodarka materiałowa</h1>
+    <p class="text-body-secondary mb-0">Arkusz <code>RURY</code> — ile w projekcie, ile dojechało, na jakim WZ.</p>
+  </div>
+  <input class="form-control form-control-sm" style="max-width: 20rem"
+         data-filtr-tabeli="#tabela-materialow" placeholder="filtruj pozycje">
+</div>
+{% endblock %}
+
+{% block tresc %}
+<div class="kafelek p-0">
+  <div class="table-responsive">
+    <table class="table table-sm table-hover tabela-gesta mb-0" id="tabela-materialow">
+      <thead class="table-light">
+        <tr><th>Pozycja</th><th class="text-end">Projekt [m]</th><th class="text-end">Dł. sztuki</th>
+            <th class="text-end">Dostarczono [m]</th><th class="text-end">Brakuje [m]</th>
+            <th>Data dostawy</th><th>WZ</th></tr>
+      </thead>
+      <tbody>
+      {% for m in pozycje %}
+        <tr>
+          <td>{{ m.opis_pozycji }}</td>
+          <td class="liczba">{{ m.ilosc_projekt_m | liczba(1) }}</td>
+          <td class="liczba">{{ m.dlugosc_sztuki_m | liczba(1) }}</td>
+          <td class="liczba">{{ m.ilosc_dostarczona_m | liczba(1) }}</td>
+          <td class="liczba {% if m.brakuje_m and m.brakuje_m > 0 %}text-danger fw-semibold{% endif %}">
+            {{ m.brakuje_m | liczba(1) }}
+          </td>
+          <td class="small">{{ m.data_dostawy or "" }}</td>
+          <td class="small text-body-secondary">{{ m.nr_wz or "" }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="7" class="text-center text-body-secondary py-4">
+          Brak danych — uruchom <code>flask import-xlsx</code>.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

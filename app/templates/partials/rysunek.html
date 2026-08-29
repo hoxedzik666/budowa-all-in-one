@@ -1,0 +1,32 @@
+{# Miniatura profilu podluznego: linia dna kanalu i linia terenu projektowanego. #}
+{% macro rysunek_profilu(p) %}
+  {# selectattr bez testu odrzucilby pikietaz 0.00 jako wartosc falszywa #}
+  {% set punkty = p.wystapienia | rejectattr("hektometr", "none") | rejectattr("rzedna_dna", "none") | list %}
+  {% if punkty | length >= 2 %}
+    {% set xs = punkty | map(attribute="hektometr") | map("float") | list %}
+    {% set dna = punkty | map(attribute="rzedna_dna") | map("float") | list %}
+    {% set tereny = punkty | map(attribute="rzedna_terenu_proj") | reject("none") | map("float") | list %}
+    {% set x_min = xs | min %}{% set x_max = xs | max %}
+    {% set wszystkie = dna + tereny %}
+    {% set y_min = wszystkie | min %}{% set y_max = wszystkie | max %}
+    {% set sz = 900 %}{% set wys = 230 %}{% set m = 36 %}
+    {% set rx = (x_max - x_min) or 1 %}
+    {% set ry = ((y_max - y_min) or 1) * 1.3 %}
+    <svg class="profil-svg" viewBox="0 0 {{ sz }} {{ wys }}" preserveAspectRatio="xMidYMid meet">
+      <polyline class="linia-terenu" points="{% for w in punkty %}{% if w.rzedna_terenu_proj is not none %}{{ (m + (w.hektometr | float - x_min) / rx * (sz - 2 * m)) | round(1) }},{{ (wys - m - (w.rzedna_terenu_proj | float - y_min) / ry * (wys - 2 * m)) | round(1) }} {% endif %}{% endfor %}"/>
+      <polyline class="linia-dna" points="{% for w in punkty %}{{ (m + (w.hektometr | float - x_min) / rx * (sz - 2 * m)) | round(1) }},{{ (wys - m - (w.rzedna_dna | float - y_min) / ry * (wys - 2 * m)) | round(1) }} {% endfor %}"/>
+      {% for w in punkty %}
+        {% set cx = (m + (w.hektometr | float - x_min) / rx * (sz - 2 * m)) | round(1) %}
+        {% set cy = (wys - m - (w.rzedna_dna | float - y_min) / ry * (wys - 2 * m)) | round(1) %}
+        <line x1="{{ cx }}" y1="{{ cy }}" x2="{{ cx }}" y2="{{ wys - m + 4 }}" stroke="#dee2e6" stroke-width="1"/>
+        <circle class="wezel" cx="{{ cx }}" cy="{{ cy }}" r="4"/>
+        <text x="{{ cx }}" y="{{ wys - m + 16 }}" text-anchor="middle">{{ w.obiekt.kod }}</text>
+        <text x="{{ cx }}" y="{{ cy - 8 }}" text-anchor="middle" fill="#0d6efd">{{ w.rzedna_dna | liczba(2) }}</text>
+      {% endfor %}
+      <text x="6" y="14" fill="#6c757d">— — teren projektowany</text>
+      <text x="6" y="26" fill="#0d6efd">—— dno kanału (rzędne w m n.p.m.)</text>
+    </svg>
+  {% else %}
+    <p class="text-body-secondary mb-0">Za mało danych, żeby narysować profil.</p>
+  {% endif %}
+{% endmacro %}

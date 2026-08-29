@@ -1,0 +1,129 @@
+{% extends "layouts/base.html" %}
+{% block tytul %}Importy{% endblock %}
+
+{% block naglowek %}
+<div class="mb-3">
+  <h1 class="h3 mb-0">Historia importów</h1>
+  <p class="text-body-secondary mb-0">
+    Każdy przebieg zapisuje, co wczytał i jakie rozbieżności znalazł. Nic nie jest ukrywane —
+    to lista miejsc, które warto sprawdzić w dokumentacji.
+  </p>
+</div>
+{% endblock %}
+
+{% block tresc %}
+{% if podejrzane %}
+<div class="kafelek p-3 mb-4 border-danger">
+  <h2 class="h6 text-uppercase text-danger mb-2">
+    <i class="bi bi-exclamation-octagon-fill"></i>
+    Odcinki do sprawdzenia w dokumentacji
+    <span class="badge text-bg-danger">{{ podejrzane | length }}</span>
+  </h2>
+  <p class="small text-body-secondary">
+    Danych tych odcinków nie da się pogodzić — nie zgadujemy poprawnej wartości.
+    Program ostrzega przy każdej próbie policzenia z nich materiału albo spadku.
+  </p>
+  <div class="table-responsive">
+    <table class="table table-sm tabela-gesta mb-0">
+      <thead class="table-light">
+        <tr><th>Odcinek</th><th class="text-end">Długość</th><th class="text-end">Ø</th>
+            <th class="text-end">Spadek</th><th>Co się nie zgadza</th><th>Profil</th></tr>
+      </thead>
+      <tbody>
+      {% for o in podejrzane %}
+        <tr>
+          <td class="fw-semibold">
+            <a href="{{ url_for('szukaj.szukaj', q=o.obiekt_od.kod) }}">{{ o.nazwa }}</a>
+          </td>
+          <td class="liczba">{{ o.dlugosc_m | liczba(2) }}</td>
+          <td class="liczba">{% if o.dn_mm %}Ø{{ o.dn_mm }}{% else %}—{% endif %}</td>
+          <td class="liczba">{{ o.spadek_promile | liczba(1) }}‰</td>
+          <td class="small">{{ o.powod_podejrzenia }}</td>
+          <td class="small">
+            {% if o.profil %}
+              <a href="{{ url_for('main.profil', profil_id=o.profil.id) }}">{{ o.profil.oznaczenie }}</a>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="accordion" id="lista-importow">
+  {% for b in importy %}
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button {% if not loop.first %}collapsed{% endif %}" type="button"
+              data-bs-toggle="collapse" data-bs-target="#bieg-{{ b.id }}">
+        <span class="badge text-bg-dark me-2">{{ b.typ_importu }}</span>
+        <span class="me-auto">{{ b.plik }}</span>
+        <span class="me-3 small text-body-secondary">
+          {{ b.rozpoczeto.strftime("%Y-%m-%d %H:%M") if b.rozpoczeto }}
+        </span>
+        {% if b.liczba_ostrzezen %}
+          <span class="badge text-bg-warning">{{ b.liczba_ostrzezen }} uwag</span>
+        {% else %}
+          <span class="badge text-bg-success">bez uwag</span>
+        {% endif %}
+      </button>
+    </h2>
+    <div id="bieg-{{ b.id }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}"
+         data-bs-parent="#lista-importow">
+      <div class="accordion-body">
+        <div class="row g-2 mb-3 small">
+          <div class="col-auto"><strong>Profile:</strong> {{ b.liczba_profili }}</div>
+          <div class="col-auto"><strong>Obiekty:</strong> {{ b.liczba_obiektow }}</div>
+          <div class="col-auto"><strong>Odcinki:</strong> {{ b.liczba_odcinkow }}</div>
+          <div class="col-auto text-body-secondary"><code>{{ (b.sha256 or "")[:16] }}</code></div>
+        </div>
+        {% if b.statystyki %}
+          <pre class="bg-body-tertiary p-2 rounded small">{{ b.statystyki | tojson_pl }}</pre>
+        {% endif %}
+        {% if b.ostrzezenia %}
+          <div class="table-responsive" style="max-height: 26rem">
+            <table class="table table-sm tabela-gesta ostrzezenie-import">
+              <thead class="table-light">
+                <tr><th style="width: 12rem">Rodzaj</th><th style="width: 8rem">Dotyczy</th><th>Opis</th></tr>
+              </thead>
+              <tbody>
+              {% for o in b.ostrzezenia[:400] %}
+                <tr>
+                  {# Uwagi z walidatora maja stala postac; starsze wpisy zostaja surowe. #}
+                  {% if o is mapping and (o.kategoria or o.typ) %}
+                    <td><span class="badge text-bg-light">{{ o.kategoria or o.typ }}</span></td>
+                    <td class="fw-semibold">{{ o.dotyczy or o.obiekt or o.profil or "" }}</td>
+                    <td class="small">
+                      {{ o.opis or o.problem or "" }}
+                      {% if o.pdf is defined %}
+                        PDF {{ o.pdf }} · arkusz {{ o.xlsx }} · różnica {{ o.roznica }}
+                      {% endif %}
+                      {% if o.z_rysunku is defined %}
+                        z rysunku {{ o.z_rysunku }} · z rzędnych {{ o.z_rzednych }}
+                      {% endif %}
+                    </td>
+                  {% else %}
+                    <td colspan="3">{{ o | tojson_pl }}</td>
+                  {% endif %}
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% if b.ostrzezenia | length > 400 %}
+            <p class="small text-body-secondary mb-0">
+              …i jeszcze {{ b.ostrzezenia | length - 400 }}. Pełna lista:
+              <code>/api/importy/{{ b.id }}/ostrzezenia</code>
+            </p>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <p class="text-body-secondary">Brak importów. Uruchom <code>flask import-wszystko</code>.</p>
+  {% endfor %}
+</div>
+{% endblock %}

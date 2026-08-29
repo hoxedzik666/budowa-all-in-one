@@ -1,0 +1,128 @@
+{% extends "layouts/base.html" %}
+{% block tytul %}Użytkownicy{% endblock %}
+
+{% block naglowek %}
+<div class="mb-3">
+  <h1 class="h3 mb-1">Użytkownicy</h1>
+  <p class="text-body-secondary mb-0">
+    Konta mające dostęp do narzędzia. Hasła nigdy nie są przechowywane jawnie —
+    w bazie leży wyłącznie skrót.
+  </p>
+</div>
+{% endblock %}
+
+{% block tresc %}
+
+{% if nowe_haslo %}
+<div class="alert alert-success">
+  <h2 class="h6"><i class="bi bi-key"></i> Hasło dla konta <strong>{{ nowy_login }}</strong></h2>
+  <div class="input-group my-2" style="max-width: 28rem">
+    <input class="form-control font-monospace" value="{{ nowe_haslo }}" readonly id="pole-nowe-haslo">
+    <button class="btn btn-outline-secondary" data-kopiuj="{{ nowe_haslo }}">
+      <i class="bi bi-clipboard"></i>
+    </button>
+  </div>
+  <p class="mb-0 small">
+    <strong>Pokazujemy je tylko raz.</strong> Zapisz teraz i przekaż osobie —
+    po odświeżeniu strony nie da się go już odczytać, można tylko wygenerować nowe.
+  </p>
+</div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="kafelek p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover tabela-gesta mb-0">
+          <thead class="table-light">
+            <tr><th>Login</th><th>Imię i nazwisko</th><th>Rola</th><th class="text-end">Zadań</th>
+                <th>Ostatnie logowanie</th><th>Stan</th><th></th></tr>
+          </thead>
+          <tbody>
+          {% for u in konta %}
+            <tr {% if not u.aktywny %}class="text-body-secondary"{% endif %}>
+              <td class="fw-semibold">
+                {{ u.login }}
+                {% if u.id == current_user.id %}<span class="badge text-bg-info">to Ty</span>{% endif %}
+              </td>
+              <td class="small">{{ u.imie_nazwisko or "—" }}</td>
+              <td>
+                <form method="post" action="{{ url_for('panel.zmien_role', uid=u.id) }}"
+                      class="d-flex gap-1">
+                  <select name="rola" class="form-select form-select-sm" style="width: 9rem">
+                    {% for r in role %}
+                      <option value="{{ r.name }}" {% if u.rola == r %}selected{% endif %}>{{ r.value }}</option>
+                    {% endfor %}
+                  </select>
+                  <button class="btn btn-sm btn-outline-secondary" title="Zapisz rolę">
+                    <i class="bi bi-check2"></i>
+                  </button>
+                </form>
+              </td>
+              <td class="liczba">{{ zadan.get(u.id, 0) }}</td>
+              <td class="small text-body-secondary">
+                {{ u.ostatnie_logowanie.strftime("%Y-%m-%d %H:%M") if u.ostatnie_logowanie else "nigdy" }}
+              </td>
+              <td>
+                {% if u.aktywny %}
+                  <span class="badge text-bg-success">aktywne</span>
+                {% else %}
+                  <span class="badge text-bg-secondary">wyłączone</span>
+                {% endif %}
+              </td>
+              <td class="text-nowrap">
+                <form method="post" action="{{ url_for('panel.reset_hasla', uid=u.id) }}"
+                      class="d-inline">
+                  <button class="btn btn-sm btn-outline-warning" title="Nowe hasło">
+                    <i class="bi bi-key"></i>
+                  </button>
+                </form>
+                <form method="post" action="{{ url_for('panel.przelacz_aktywnosc', uid=u.id) }}"
+                      class="d-inline">
+                  <button class="btn btn-sm btn-outline-secondary"
+                          title="{{ 'Wyłącz konto' if u.aktywny else 'Włącz konto' }}">
+                    <i class="bi bi-{{ 'toggle-on' if u.aktywny else 'toggle-off' }}"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <form class="kafelek p-3" method="post" action="{{ url_for('panel.dodaj_uzytkownika') }}">
+      <h2 class="h6 text-uppercase text-body-secondary mb-3">Nowe konto</h2>
+      <div class="mb-3">
+        <label class="form-label">Login</label>
+        <input class="form-control" name="login" required placeholder="np. brygadzista-1">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Imię i nazwisko</label>
+        <input class="form-control" name="imie_nazwisko" placeholder="opcjonalnie">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Rola</label>
+        <select class="form-select" name="rola">
+          {% for r in role %}
+            <option value="{{ r.name }}" {% if r.name == 'BRYGADZISTA' %}selected{% endif %}>{{ r.value }}</option>
+          {% endfor %}
+        </select>
+        <div class="form-text">
+          <strong>Administrator</strong> zarządza kontami ·
+          <strong>Kierownik</strong> przydziela zadania ·
+          <strong>Brygadzista</strong> widzi dane i swoje zadania
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Hasło</label>
+        <input class="form-control" name="haslo" placeholder="puste = wygeneruję losowe">
+      </div>
+      <button class="btn btn-primary w-100"><i class="bi bi-person-plus"></i> Utwórz konto</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
