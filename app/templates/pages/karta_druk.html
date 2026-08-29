@@ -1,0 +1,176 @@
+{% extends "layouts/base.html" %}
+{% from "partials/rysunek.html" import rysunek_profilu %}
+{% block tytul %}Karta odcinka {{ o.nazwa }}{% endblock %}
+
+{% block glowa %}
+<style>
+  /* Karta ma zmiescic sie na jednej kartce A4 i byc czytelna w rekawicach. */
+  .karta { max-width: 190mm; margin: 0 auto; background: #fff; color: #000; padding: 6mm; }
+  .karta table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+  .karta th, .karta td { border: 1px solid #999; padding: 2px 5px; }
+  .karta th { background: #eee; text-align: left; font-weight: 600; }
+  .karta .liczba { text-align: right; font-variant-numeric: tabular-nums; }
+  .karta h1 { font-size: 15pt; margin: 0 0 1mm; }
+  .karta h2 { font-size: 9pt; text-transform: uppercase; letter-spacing: .04em;
+              color: #444; margin: 4mm 0 1mm; }
+  .karta .naglowek { display: flex; justify-content: space-between;
+                     align-items: flex-end; border-bottom: 2px solid #000;
+                     padding-bottom: 2mm; }
+  .karta .kolumny { display: flex; gap: 4mm; }
+  .karta .kolumny > * { flex: 1; min-width: 0; }
+  .karta .puste td { height: 7mm; }
+  .karta .stopka { margin-top: 4mm; padding-top: 2mm; border-top: 1px solid #999;
+                   font-size: 7.5pt; color: #555; display: flex;
+                   justify-content: space-between; }
+  .karta .uwaga { border: 2px solid #000; padding: 2mm; margin: 2mm 0; font-size: 9pt; }
+
+  @media print {
+    nav, footer, .bez-druku, .alert-dismissible { display: none !important; }
+    body { background: #fff !important; }
+    main { padding: 0 !important; }
+    .karta { max-width: none; padding: 0; }
+    @page { size: A4 portrait; margin: 10mm; }
+  }
+</style>
+{% endblock %}
+
+{% block tresc %}
+<div class="bez-druku d-flex flex-wrap gap-2 mb-3">
+  <button class="btn btn-primary btn-sm" onclick="window.print()">
+    <i class="bi bi-printer"></i> Drukuj kartę
+  </button>
+  <a class="btn btn-outline-secondary btn-sm"
+     href="{{ url_for('szukaj.szukaj', q=o.obiekt_od.kod) }}">
+    <i class="bi bi-arrow-left"></i> Wróć do wyszukiwarki
+  </a>
+  <a class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener"
+     href="{{ url_for('main.wycinek_odcinka_pdf', od=o.obiekt_od.kod, do_=o.obiekt_do.kod) }}">
+    <i class="bi bi-filetype-pdf"></i> Oryginał z profilu
+  </a>
+</div>
+
+<div class="karta">
+  <div class="naglowek">
+    <div>
+      <h1>Odcinek {{ o.obiekt_od.kod }} → {{ o.obiekt_do.kod }}</h1>
+      <div style="font-size: 9pt">
+        Obwodnica Krosna Odrzańskiego, DK29 ·
+        {% if o.profil %}profil {{ o.profil.oznaczenie }}{% endif %}
+        {% if o.profil and o.profil.sheet %} · arkusz {{ o.profil.sheet.nr_strony }}{% endif %}
+      </div>
+    </div>
+    <div style="text-align: right; font-size: 10pt">
+      <div><strong>{{ o.dlugosc_m | liczba(2) }} m</strong>
+        {% if o.dn_mm %} · Ø{{ o.dn_mm }}{% endif %}</div>
+      <div>spadek {{ o.spadek_promile | liczba(1) }}‰ ({{ o.spadek_procent | liczba(2) }}%)</div>
+    </div>
+  </div>
+
+  {% if o.podejrzany %}
+    <div class="uwaga">
+      <strong>UWAGA — danym tego odcinka nie można ufać.</strong><br>
+      {{ o.powod_podejrzenia }} Sprawdź w dokumentacji przed rozpoczęciem robót.
+    </div>
+  {% endif %}
+
+  <h2>Profil podłużny</h2>
+  {% if o.profil %}{{ rysunek_profilu(o.profil) }}{% endif %}
+
+  <div class="kolumny">
+    <div>
+      <h2>Rzędne i wykop</h2>
+      <table>
+        <tr><th>Wielkość</th><th>{{ o.obiekt_od.kod }}</th><th>{{ o.obiekt_do.kod }}</th></tr>
+        <tr><td>Teren projektowany</td>
+            <td class="liczba">{{ o.obiekt_od.rzedna_terenu_proj | liczba(2) }}</td>
+            <td class="liczba">{{ o.obiekt_do.rzedna_terenu_proj | liczba(2) }}</td></tr>
+        <tr><td>Teren istniejący</td>
+            <td class="liczba">{{ o.obiekt_od.rzedna_terenu_istn | liczba(2) }}</td>
+            <td class="liczba">{{ o.obiekt_do.rzedna_terenu_istn | liczba(2) }}</td></tr>
+        <tr><td><strong>Dno kanału</strong></td>
+            <td class="liczba"><strong>{{ o.rzedna_dna_od | liczba(2) }}</strong></td>
+            <td class="liczba"><strong>{{ o.rzedna_dna_do | liczba(2) }}</strong></td></tr>
+        <tr><td>Dno studni (Rz.d.)</td>
+            <td class="liczba">{{ o.obiekt_od.rzedna_dna_studni | liczba(2) }}</td>
+            <td class="liczba">{{ o.obiekt_do.rzedna_dna_studni | liczba(2) }}</td></tr>
+        <tr><td>Zagłębienie</td>
+            <td class="liczba">{{ o.obiekt_od.zaglebienie | liczba(2) }}</td>
+            <td class="liczba">{{ o.obiekt_do.zaglebienie | liczba(2) }}</td></tr>
+        <tr><td>Głębokość wykopu</td>
+            <td class="liczba">{{ o.obiekt_od.glebokosc_wykopu | liczba(2) }}</td>
+            <td class="liczba">{{ o.obiekt_do.glebokosc_wykopu | liczba(2) }}</td></tr>
+        <tr><td>Średnica studni</td>
+            <td class="liczba">{% if o.obiekt_od.srednica_studni_mm %}DN{{ o.obiekt_od.srednica_studni_mm }}{% else %}—{% endif %}</td>
+            <td class="liczba">{% if o.obiekt_do.srednica_studni_mm %}DN{{ o.obiekt_do.srednica_studni_mm }}{% else %}—{% endif %}</td></tr>
+      </table>
+    </div>
+
+    <div>
+      <h2>Rury — wykonawca ma 3 m i 6 m</h2>
+      <table>
+        <tr><th>Wariant</th><th>Sztuki</th><th class="liczba">Materiał</th>
+            <th class="liczba">Docinka</th><th class="liczba">Odpad</th></tr>
+        {% for w in wykaz.rury.warianty %}
+          <tr {% if w.nazwa == wykaz.rury.zalecany %}style="background:#e8f0ff"{% endif %}>
+            <td>{{ w.nazwa | replace('_', ' ') }}
+              {% if w.nazwa == wykaz.rury.zalecany %}<strong>★</strong>{% endif %}</td>
+            <td>{{ w.opis_sztuk }}</td>
+            <td class="liczba">{{ w.material_m | liczba(1) }} m</td>
+            <td class="liczba">{% if w.docinka_m %}{{ w.docinka_m | liczba(2) }} m{% else %}—{% endif %}</td>
+            <td class="liczba">{{ w.odpad_m | liczba(2) }} m</td>
+          </tr>
+        {% endfor %}
+      </table>
+      {% if wykaz.klasa_sn or wykaz.dn_katalogowe %}
+        <div style="font-size: 8pt; margin-top: 1mm">
+          Katalog: {% if wykaz.dn_katalogowe %}OD{{ wykaz.dn_katalogowe }}{% endif %}
+          {% if wykaz.klasa_sn %} · {{ wykaz.klasa_sn }}{% endif %}
+          (rury PRAGMA opisane średnicą zewnętrzną)
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <h2>Wykonanie — wpisz odczyty z niwelatora</h2>
+  <table>
+    <tr><th style="width: 22%">Odległość od {{ o.obiekt_od.kod }}</th>
+        <th style="width: 22%">Rzędna projektowa</th>
+        <th style="width: 22%">Rzędna zmierzona</th>
+        <th style="width: 16%">Odchyłka</th>
+        <th>Data / podpis</th></tr>
+    {% if wykonanie %}
+      {% for p in wykonanie.pomiary %}
+        <tr>
+          <td class="liczba">{{ p.odleglosc_m | liczba(1) }} m</td>
+          <td class="liczba">{{ p.rzedna_projektowa | liczba(3) }}</td>
+          <td class="liczba">{{ p.rzedna_zmierzona | liczba(3) }}</td>
+          <td class="liczba">{{ "%+.3f" | format(p.odchylka_m) if p.odchylka_m is not none else "—" }}
+            {% if p.w_tolerancji is false %} !{% endif %}</td>
+          <td>{{ p.data_pomiaru.strftime("%Y-%m-%d") if p.data_pomiaru }}
+            {{ p.autor.login if p.autor else "" }}</td>
+        </tr>
+      {% endfor %}
+    {% endif %}
+    {# Puste wiersze zostaja zawsze - kartka ma dzialac takze jako notatnik. #}
+    {% for _ in range(4) %}
+      <tr class="puste"><td></td><td></td><td></td><td></td><td></td></tr>
+    {% endfor %}
+  </table>
+
+  {% if wykonanie and wykonanie.spadek %}
+    <div style="font-size: 9pt; margin-top: 1mm">
+      Spadek wykonany: <strong>{{ wykonanie.spadek.spadek_promile | liczba(1) }}‰</strong>
+      na {{ wykonanie.spadek.dlugosc_m | liczba(1) }} m
+      (projekt {{ o.spadek_promile | liczba(1) }}‰)
+      {% if wykonanie.spadek.poprawny_kierunek is false %}
+        — <strong>UWAGA: spadek w złą stronę</strong>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <div class="stopka">
+    <span>Tolerancje: dno kanału ± 0,02 m · dno studni ± 0,03 m · teren ± 0,05 m</span>
+    <span>Budowa All-in-One · dane z „Profile Scalone.pdf" i „Materiał.xlsx"</span>
+  </div>
+</div>
+{% endblock %}

@@ -1,5 +1,15 @@
 # Plany sytuacyjne — co się udało, a co nie
 
+> ⚠️ **Ten dokument opisuje drogę historyczną.**
+>
+> OCR planów nie ma już zastosowania produkcyjnego. Rysunek okazał się czystym
+> wektorem, z którego sieć da się wyciąć po **stylu kreski** — bez rastrowania
+> i bez zgadywania. Aktualny opis:
+> [`09-konwerter-planow.md`](09-konwerter-planow.md).
+>
+> Zapis zostaje, bo tłumaczy, czego próbowano i dlaczego nie wyszło — a to
+> chroni przed powtórzeniem tej samej drogi.
+
 > Uczciwy zapis próby automatycznego powiązania obiektów z planami sytuacyjnymi.
 > Wynik jest w większości **negatywny** i lepiej, żeby było to zapisane wprost,
 > niż żeby ktoś za pół roku powtarzał tę samą drogę.

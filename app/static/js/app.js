@@ -58,9 +58,53 @@
     }).attr("src", przycisk.data("adres"));
   });
 
+  // Podsumowanie wykonania odcinka. Najwazniejsza liczba nie jest tu "czy
+  // rzedne sie zgadzaja", tylko czy woda poplynie - czyli rzeczywisty spadek
+  // i jego kierunek.
+  function opiszWykonanie(dane) {
+    if (!dane.pomiarow) {
+      return '<span class="text-body-secondary">Brak pomiarów wykonawczych. ' +
+        "Po ułożeniu rury wpisz rzędną z niwelatora — program policzy odchyłkę.</span>";
+    }
+    var czesci = ["<strong>" + dane.pomiarow + "</strong> pomiarów"];
+    if (dane.poza_tolerancja) {
+      czesci.push('<span class="badge text-bg-warning">' + dane.poza_tolerancja +
+                  " poza tolerancją</span>");
+    } else {
+      czesci.push('<span class="badge text-bg-success">wszystko w tolerancji</span>');
+    }
+    if (dane.najwieksza_odchylka_m !== null) {
+      czesci.push("największa odchyłka " +
+                  window.pl(dane.najwieksza_odchylka_m, 3) + " m");
+    }
+    if (dane.spadek) {
+      var s = dane.spadek;
+      var opis = "spadek wykonany <strong>" + window.pl(s.spadek_promile, 1) +
+                 "‰</strong> na " + window.pl(s.dlugosc_m, 1) + " m";
+      if (dane.spadek_projektowy_promile !== null) {
+        opis += " (projekt " + window.pl(dane.spadek_projektowy_promile, 1) + "‰)";
+      }
+      if (s.poprawny_kierunek === false) {
+        opis += ' <span class="badge text-bg-danger">woda płynie pod górę</span>';
+      }
+      czesci.push(opis);
+    }
+    return czesci.join(" · ");
+  }
+
   $(function () {
     $('[data-bs-toggle="tooltip"]').each(function () {
       new bootstrap.Tooltip(this);
+    });
+
+    $("[data-wykonanie]").each(function () {
+      var blok = $(this);
+      $.getJSON(blok.data("wykonanie"))
+        .done(function (dane) { blok.find(".podsumowanie-wykonania").html(opiszWykonanie(dane)); })
+        .fail(function () {
+          blok.find(".podsumowanie-wykonania")
+              .html('<span class="text-body-secondary">Nie udało się pobrać wykonania.</span>');
+        });
     });
   });
 })(jQuery);

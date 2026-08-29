@@ -202,6 +202,37 @@ def podpowiedzi():
     return jsonify([{"kod": k, "typ": t.value} for k, t in db.session.execute(q)])
 
 
+@szukaj_bp.get("/odcinek/<od>/<do_>/karta")
+def karta_do_druku(od: str, do_: str):
+    """Karta odcinka na jedna kartke A4 - do teczki wykonawczej.
+
+    Wszystko, co brygada ma przy sobie w wykopie: profil, rzedne, spadek,
+    ile rur i jakich, wykaz materialow, wycinek oryginalnego rysunku
+    i miejsce na wpisanie pomiarow recznie.
+    """
+    from sqlalchemy.orm import aliased
+
+    a, b = aliased(NetworkObject), aliased(NetworkObject)
+    odcinek = db.session.scalar(
+        select(Segment).join(a, Segment.obiekt_od_id == a.id)
+        .join(b, Segment.obiekt_do_id == b.id)
+        .where(func.lower(a.kod) == od.lower(), func.lower(b.kod) == do_.lower())
+    )
+    if odcinek is None:
+        from flask import abort
+
+        abort(404, f"Nie ma odcinka {od}-{do_}.")
+
+    from app.blueprints.wykonanie import podsumowanie_odcinka
+
+    return render_template(
+        "pages/karta_druk.html",
+        o=odcinek,
+        wykaz=wykaz_dla_odcinka(odcinek),
+        wykonanie=podsumowanie_odcinka(odcinek),
+    )
+
+
 @szukaj_bp.get("/api/odcinek/<od>/<do_>/rury")
 def rury_odcinka(od: str, do_: str):
     """Sam przelicznik rur dla wskazanego odcinka."""

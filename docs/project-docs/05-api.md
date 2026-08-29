@@ -102,7 +102,7 @@ Szczegóły: [`03-przelicznik-rur.md`](03-przelicznik-rur.md).
 | `GET /api/osnowa?szukaj=o10` | punkty osnowy |
 | `GET /api/materialy` | arkusz RURY |
 | `GET /api/importy` | historia importów |
-| `GET /api/importy/<id>/ostrzezenia` | pełna lista rozbieżności |
+| `GET /api/importy/<id>/ostrzezenia` | pełna lista rozbieżności, w tym wynik walidatora |
 | `GET /api/zdrowie` | `{"status": "ok"}` |
 
 ---
@@ -154,10 +154,99 @@ wychodzi poza 4-metrową łatę.
 | Endpoint | Zwraca |
 |---|---|
 | `GET /mapa/strona/<nr>.png?dpi=90` | cały arkusz |
+| `GET /mapa/kafelek/<nr>/<z>/<x>/<y>.png` | **kafelek 256 × 256 px** — podstawa mapy z zoomem |
+| `GET /api/mapa/strona/<nr>` | wymiary, skala, georeferencja, kotwice, wskazane pozycje |
 | `GET /mapa/obiekt/<kod>.png` | wycinek wokół obiektu z zaznaczeniem |
 | `GET /mapa/odcinek/<od>/<do>.png` | wycinek obejmujący oba końce |
 | `POST /api/mapa/pozycja` | zapis ręcznie wskazanej pozycji |
 | `DELETE /api/mapa/pozycja/<kod>` | usunięcie wskazania |
+
+### Sieć wycięta z rysunku
+
+| Endpoint | Zwraca |
+|---|---|
+| `GET /api/mapa/siec/<nr>` | polilinie i etykiety kilometrażu wycięte z arkusza |
+| `GET /mapa/eksport/<nr>.geojson` | GeoJSON (QGIS) |
+| `GET /mapa/eksport/<nr>.dxf` | DXF R12 (CAD) |
+| `GET /mapa/eksport/<nr>.csv` | węzły do tyczenia |
+| `GET /mapa/eksport/<nr>.pgw` | plik świata — **tylko po georeferencji** |
+
+Wynik pochodzi z `flask konwertuj-plany`; bez tej komendy `api/mapa/siec`
+zwraca `{"dostepne": false}` z powodem. Szczegóły:
+[`09-konwerter-planow.md`](09-konwerter-planow.md).
+
+### Georeferencja
+
+| Endpoint | Do czego |
+|---|---|
+| `POST /api/mapa/kotwica` | wskaż punkt o znanych współrzędnych |
+| `DELETE /api/mapa/kotwica/<id>` | usuń kotwicę i przelicz |
+| `GET /api/mapa/wspolrzedne/<nr>?x_pt=&y_pt=` | punkt rysunku → X, Y w PL-2000/5 |
+| `GET /api/mapa/repery/<nr>` | repery z osnowy naniesione na arkusz |
+
+```bash
+curl -X POST http://localhost:8000/api/mapa/kotwica   -H "Content-Type: application/json"   -d '{"strona_id":5,"x_pt":842.0,"y_pt":511.0,"reper":"o41"}'
+```
+
+```json
+{"zapisano": true,
+ "georef": {"skala_rysunku": 1000, "obrot_stopnie": 4.0,
+            "rmse_m": 0.0, "liczba_kotwic": 2, "wiarygodne": true,
+            "uklad": "PL-2000/5"}}
+```
+
+Poniżej dwóch kotwic `georef` jest `null` — nie zgadujemy.
+Szczegóły: [`10-georeferencja.md`](10-georeferencja.md).
+
+---
+
+## Wycinek oryginalnego rysunku
+
+| Endpoint | Zwraca |
+|---|---|
+| `GET /profil/<id>/wycinek.png?dpi=150&legenda=1` | fragment arkusza jako obraz |
+| `GET /profil/<id>/wycinek.pdf?pobierz=1` | ten sam fragment **jako wektor** |
+| `GET /odcinek/<od>/<do>/wycinek.png` | fragment obejmujący jeden odcinek |
+| `GET /odcinek/<od>/<do>/wycinek.pdf` | jw., wektorowo |
+
+Konwersja rusza **wyłącznie na żądanie**; wynik trafia do cache.
+`legenda=0` pomija kolumnę podpisów pasm.
+
+---
+
+## Dziennik wykonawczy
+
+| Endpoint | Do czego |
+|---|---|
+| `GET /wykonanie?zakres=` | lista pomiarów: `wszystkie`, `moje`, `poza-tolerancja` |
+| `POST /wykonanie/dodaj` | nowy pomiar |
+| `POST /wykonanie/<id>/usun` | usunięcie (autor albo admin) |
+| `GET /api/wykonanie/odcinek/<od>/<do>` | pomiary, odchyłki i rzeczywisty spadek |
+
+```json
+{"odcinek": "Wyl101-D155", "pomiarow": 2, "poza_tolerancja": 0,
+ "najwieksza_odchylka_m": 0.02,
+ "spadek": {"dlugosc_m": 20.5, "spadek_promile": 3.9,
+            "poprawny_kierunek": true, "roznica_do_projektu_promile": 0.9},
+ "spadek_projektowy_promile": 3.0,
+ "pomiary": [{"odleglosc_m": 0.0, "rzedna_projektowa": 82.7,
+              "rzedna_zmierzona": 82.7, "odchylka_m": 0.0,
+              "tolerancja_m": 0.02, "w_tolerancji": true}]}
+```
+
+**Pomiar nigdy nie nadpisuje projektu.** Odchyłka liczy się w locie.
+
+---
+
+## Praca offline i kody QR
+
+| Endpoint | Do czego |
+|---|---|
+| `GET /service-worker.js` | skrypt offline (nagłówek `Service-Worker-Allowed: /`) |
+| `GET /offline` | ekran przy braku zasięgu — **działa bez sesji** |
+| `GET /qr` | arkusz kodów do wydruku |
+| `GET /qr/<kod>.png?px=8` | pojedynczy kod QR |
+| `GET /odcinek/<od>/<do>/karta` | karta odcinka na kartkę A4 |
 
 Wycinki zwracają **`404` z komunikatem**, gdy obiekt nie ma jeszcze wskazanej
 pozycji — nigdy pustego obrazu.
@@ -219,8 +308,13 @@ studni), oba warianty spadku oraz tabelę punktów:
 | `GET /zadania` · `GET /api/zadania?zakres=` | lista zadań |
 | `POST /zadania/dodaj` · `/zadania/<id>/status` · `/zadania/<id>/usun` | operacje na zadaniach |
 
-**Wszystkie endpointy wymagają zalogowania** poza `/login`, `/static/…`
-i `/api/zdrowie`. Bez sesji zwracają `302` na `/login`.
+**Wszystkie endpointy wymagają zalogowania** poza `/login`, `/static/…`,
+`/api/zdrowie`, `/service-worker.js` i `/offline`. Bez sesji zwracają `302`
+na `/login`.
+
+Dwa ostatnie są otwarte celowo: przeglądarka pobiera skrypt offline przed
+zalogowaniem, a przy braku sieci użytkownik ma zobaczyć informację o zasięgu,
+a nie ekran logowania, którego i tak nie da się wysłać.
 
 ---
 
@@ -235,7 +329,10 @@ i `/api/zdrowie`. Bez sesji zwracają `302` na `/login`.
 | `/profil/<id>` | profil podłużny z rysunkiem |
 | `/niwelator/` | kalkulator niwelacyjny |
 | `/niwelator/ciag-rur` | **tyczenie ciągu rur — odczyt na łacie** |
-| `/mapa` | przeglądarka planów i wskazywanie pozycji |
+| `/mapa` | **przeglądarka planów: zoom, warstwy, skala, georeferencja** |
 | `/zadania` | zadania globalne i przypisane |
 | `/panel/uzytkownicy` | konta (tylko ADMIN) |
+| `/wykonanie` | **dziennik wykonawczy — rzędne z wykopu** |
+| `/qr` | arkusz kodów QR na studnie |
+| `/odcinek/<od>/<do>/karta` | karta odcinka do druku (A4) |
 | `/osnowa`, `/materialy`, `/importy` | osnowa, materiały, historia importów |

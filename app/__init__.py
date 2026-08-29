@@ -49,7 +49,9 @@ def create_app(config_object=None) -> Flask:
     from app.blueprints.mapa import mapa_bp
     from app.blueprints.niwelator import niwelator_bp
     from app.blueprints.panel import panel_bp
+    from app.blueprints.pwa import pwa_bp
     from app.blueprints.szukaj import szukaj_bp
+    from app.blueprints.wykonanie import wykonanie_bp
     from app.blueprints.zadania import zadania_bp
 
     app.register_blueprint(auth_bp)
@@ -60,6 +62,8 @@ def create_app(config_object=None) -> Flask:
     app.register_blueprint(mapa_bp)
     app.register_blueprint(panel_bp)
     app.register_blueprint(zadania_bp)
+    app.register_blueprint(wykonanie_bp)
+    app.register_blueprint(pwa_bp)
 
     @app.before_request
     def wymagaj_logowania():

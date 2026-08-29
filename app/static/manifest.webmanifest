@@ -1,0 +1,22 @@
+{
+  "name": "Budowa All-in-One — wod-kan",
+  "short_name": "Budowa",
+  "description": "Rzędne, spadki, rury i tyczenie dla obwodnicy Krosna Odrzańskiego (DK29).",
+  "lang": "pl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f8f9fa",
+  "theme_color": "#212529",
+  "icons": [
+    { "src": "/static/ikony/ikona-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/static/ikony/ikona-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/static/ikony/ikona-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Szukaj obiektu", "url": "/szukaj" },
+    { "name": "Tyczenie ciągu rur", "url": "/niwelator/ciag-rur" },
+    { "name": "Dziennik wykonawczy", "url": "/wykonanie" }
+  ]
+}

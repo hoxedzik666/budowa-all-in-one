@@ -28,6 +28,16 @@
           profil {{ o.profil.oznaczenie }}
         </a>
       {% endif %}
+      <a class="btn btn-sm btn-outline-dark py-0" target="_blank" rel="noopener"
+         href="{{ url_for('szukaj.karta_do_druku', od=o.obiekt_od.kod, do_=o.obiekt_do.kod) }}"
+         title="Karta na jedną kartkę A4 do teczki wykonawczej">
+        <i class="bi bi-printer"></i> Karta do druku
+      </a>
+      <a class="btn btn-sm btn-outline-dark py-0" target="_blank" rel="noopener"
+         href="{{ url_for('pwa.kod_qr', kod=o.obiekt_od.kod) }}"
+         title="Kod QR obiektu {{ o.obiekt_od.kod }}">
+        <i class="bi bi-qr-code"></i>
+      </a>
     </div>
   </div>
 
@@ -184,6 +194,54 @@
         </p>
         {% endif %}
       </div>
+    </div>
+  </div>
+
+  {# --- dziennik wykonawczy --- #}
+  <div class="p-3 border-top" id="wykonanie-{{ o.id }}"
+       data-wykonanie="{{ url_for('wykonanie.api_odcinek', od=o.obiekt_od.kod, do_=o.obiekt_do.kod) }}">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+      <h3 class="h6 text-uppercase text-body-secondary mb-0">Wykonanie</h3>
+      <button class="btn btn-sm btn-outline-success py-0" type="button"
+              data-bs-toggle="collapse" data-bs-target="#pomiar-{{ o.id }}">
+        <i class="bi bi-plus-lg"></i> Wpisz pomiar z niwelatora
+      </button>
+    </div>
+
+    <div class="podsumowanie-wykonania small text-body-secondary">
+      Sprawdzam, czy ten odcinek ma już pomiary…
+    </div>
+
+    <div class="collapse mt-2" id="pomiar-{{ o.id }}">
+      <form method="post" action="{{ url_for('wykonanie.dodaj') }}" class="row g-2 align-items-end">
+        <input type="hidden" name="dotyczy" value="{{ o.nazwa }}">
+        <div class="col-6 col-md-3">
+          <label class="form-label small mb-0">Rzędna zmierzona</label>
+          <input class="form-control form-control-sm" name="rzedna" required
+                 inputmode="decimal" placeholder="{{ o.rzedna_dna_od | liczba(3) }}">
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label small mb-0">Odległość [m]</label>
+          <input class="form-control form-control-sm" name="odleglosc"
+                 inputmode="decimal" placeholder="0,0">
+          <div class="form-text small">od {{ o.obiekt_od.kod }}</div>
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label small mb-0">Co</label>
+          <select class="form-select form-select-sm" name="rodzaj">
+            <option value="DNO_KANALU">dno kanału</option>
+            <option value="DNO_STUDNI">dno studni</option>
+            <option value="TEREN">teren</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-3">
+          <label class="form-label small mb-0">Uwagi</label>
+          <input class="form-control form-control-sm" name="uwagi">
+        </div>
+        <div class="col-6 col-md-2">
+          <button class="btn btn-sm btn-success w-100">Zapisz</button>
+        </div>
+      </form>
     </div>
   </div>
 

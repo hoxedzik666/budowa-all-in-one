@@ -26,7 +26,26 @@ app/models/    ORM: obiekty, odcinki, profile, konta, zadania
 app/blueprints/  main · szukaj · niwelator · mapa · api · auth · panel · zadania
         │
         ▼
-app/templates/ + app/static/     ← Jinja2 + Bootstrap/Tailwind/jQuery
+app/templates/ + app/static/     ← Jinja2 + Bootstrap/Tailwind/jQuery/Leaflet
+```
+
+Plany sytuacyjne idą **osobnym torem**, bo ich konwersja trwa ponad dwie minuty
+i nie da się jej zrobić w trakcie żądania:
+
+```
+docs/Plany sytuacyjne Scalone.pdf
+        │  flask konwertuj-plany
+        ▼
+app/services/plan_wektor.py   ← filtr po stylu kreski, sklejanie polilinii
+        │
+        ▼
+data/exports/siec/strona-NN.json      ← wynik na dysku (120 kB)
+        │
+        ├─→ plan_eksport.py  → GeoJSON · DXF · CSV
+        └─→ /mapa            → warstwa sieci + kilometraż
+
+app/services/kafelki.py       ← obraz arkusza, renderowany na żądanie
+app/services/georef.py        ← przeliczenie punkt rysunku ↔ PL-2000/5
 ```
 
 Zasada, która trzyma to w kupie: **serwisy nie znają Flaska**. Dzięki temu
@@ -43,7 +62,8 @@ i bez bazy — i te testy biegną w ułamku sekundy.
 | `network.py` | **rdzeń**: `Sheet` (arkusz PDF), `Profile` (profil podłużny), `NetworkObject` (obiekt), `ObjectOccurrence` (wystąpienie obiektu na profilu), `Segment` (odcinek), `Connection` (włączenia i przyłącza) |
 | `survey.py` | `SurveyPoint` — punkty osnowy geodezyjnej, czyli repery |
 | `material.py` | `MaterialItem` — arkusz RURY; zawiera `rozbierz_opis()`, która wyciąga z nazwy pozycji średnicę, długość sztuki i klasę SN |
-| `plan.py` | `PlanSheet` i `PlanLocation` — arkusze planów sytuacyjnych i pozycje obiektów na nich; `punkty_na_metry()` przelicza odległość na rysunku na metry w terenie |
+| `plan.py` | `PlanSheet`, `PlanLocation` — arkusze planów i pozycje obiektów; `PlanGeoref`, `PlanAnchor` — związanie arkusza z układem PL-2000/5; `punkty_na_metry()` przelicza odległość na rysunku na metry |
+| `wykonanie.py` | `PomiarWykonawczy` — rzędne zmierzone w wykopie. **Osobno od projektu**: pomiar nigdy go nie nadpisuje |
 | `audit.py` | `ImportRun` — historia importów wraz z pełną listą rozbieżności |
 | `user.py` | `User`, `Rola` — konta i uprawnienia; hasła wyłącznie jako skrót |
 | `task.py` | `Task`, `StatusZadania`, `Priorytet` — zadania globalne i przypisane |
@@ -98,10 +118,47 @@ Odejmuje promienie studni od długości osiowej, liczy spadek w dwóch trybach
 (rzędne przy ścianie studni albo w osi) i podaje **odczyt na łacie** w każdym
 punkcie — z uwzględnieniem wysokości od cieku do górnego karba.
 
-### `plan_ocr.py` — próba odczytu planów
-Etykiety na planach sytuacyjnych są zamienione na krzywe. Moduł próbuje je
-odzyskać OCR-em; skuteczność jest **niska** i każdy wynik ma zapisaną pewność.
-Dlaczego tak: [`04-ocr-planow.md`](04-ocr-planow.md).
+### `walidacja.py` — kontrola jakości danych
+Sprawdza niezmiennik rzędnych, długości, spadki i rozjazd rysunek ↔ rzędne.
+**Nie zgaduje poprawnych wartości** — oznacza odcinki flagą `podejrzany`
+z podanym powodem. Uruchamia się po każdym imporcie i komendą `audyt-danych`.
+Szczegóły: [`11-audyt-danych.md`](11-audyt-danych.md).
+
+### `schemat.py` — dostosowanie istniejącej bazy
+`db.create_all()` tworzy tylko brakujące tabele, nie dotyka istniejących.
+Ten moduł dokłada brakujące kolumny i indeksy (`ADD COLUMN IF NOT EXISTS`),
+żeby zmiana modelu nie wymagała kasowania bazy razem z ręcznie wskazanymi
+pozycjami na planach.
+
+### `plan_wektor.py` — wycięcie sieci z planów sytuacyjnych
+Filtruje ścieżki wektorowe po **stylu kreski** odczytanym z legendy, skleja je
+w polilinie i wyciąga żywe etykiety kilometrażu. Zastępuje OCR.
+Szczegóły: [`09-konwerter-planow.md`](09-konwerter-planow.md).
+
+### `plan_eksport.py` — GeoJSON, DXF, CSV
+Zapis wyciętej sieci dla geodety i CAD. Każdy plik mówi w środku, w jakim jest
+układzie. DXF piszemy sami w wersji R12 — czyta go każdy CAD, a to kilkadziesiąt
+linii zamiast kolejnej zależności.
+
+### `georef.py` — związanie arkusza z terenem
+Przekształcenie Helmerta z dwóch (lub więcej) wskazanych punktów o znanych
+współrzędnych. Podaje skalę, obrót i odchyłkę, żeby dało się ocenić, czy
+dopasowanie ma sens. Szczegóły: [`10-georeferencja.md`](10-georeferencja.md).
+
+### `kafelki.py` — serwer kafelków mapy
+Renderuje fragmenty 256 × 256 px na żądanie. Sedno wydajności to **lista
+wyświetlania** budowana raz na stronę — 25 razy szybciej niż renderowanie
+strony od nowa przy każdym kafelku.
+
+### `wycinek_pdf.py` — fragment oryginalnego rysunku profilu
+Składa dwa pasy tej samej strony: kolumnę podpisów pasm i sam profil.
+Kopiuje **wektor**, nie obrazek, więc wynik da się powiększać i drukować
+w jakości oryginału. Uruchamia się wyłącznie na żądanie.
+
+### `plan_ocr.py` — próba odczytu planów (droga historyczna)
+Etykiety na planach są krzywymi; OCR dał zero trafień. Moduł zostaje wraz
+z komendą `ocr-plany` jako zapis tego, czego próbowano.
+Dlaczego nie wyszło: [`04-ocr-planow.md`](04-ocr-planow.md).
 
 ---
 
@@ -115,6 +172,8 @@ Dlaczego tak: [`04-ocr-planow.md`](04-ocr-planow.md).
 | `mapa.py` | przeglądarka planów, wycinki map, ręczne wskazywanie pozycji obiektów |
 | `api.py` | API JSON dla danych sieci |
 | `auth.py` | logowanie i wylogowanie; lista endpointów jawnych |
+| `wykonanie.py` | dziennik wykonawczy: pomiary, odchyłki, rzeczywisty spadek |
+| `pwa.py` | praca offline (service worker, `/offline`) i kody QR na studnie |
 | `panel.py` | zarządzanie kontami (tylko rola ADMIN) |
 | `zadania.py` | zadania globalne i przypisane, licznik do nawigacji |
 
@@ -126,7 +185,8 @@ Dlaczego tak: [`04-ocr-planow.md`](04-ocr-planow.md).
 layouts/base.html          szkielet: nawigacja, motywy, komunikaty, skrypty
 partials/
   rysunek.html             makro rysujące profil podłużny w SVG
-  karta_odcinka.html       pełna karta odcinka (profil + tabelka + materiały + rury + mapka)
+  karta_odcinka.html       pełna karta odcinka (profil + wycinek oryginału + tabelka
+                           + materiały + rury + wykonanie + mapka)
   warianty_rur.html        tabela trzech wariantów pocięcia rur
   przelacznik_motywu.html  menu wyboru motywu
 pages/
@@ -135,7 +195,11 @@ pages/
   obiekt.html / obiekty.html / odcinki.html / profil.html / profile.html
   niwelator.html           kalkulator pojedynczego punktu
   spadek_ciagu.html        tyczenie całego ciągu rur
-  mapa.html                przeglądarka planów i wskazywanie pozycji
+  mapa.html                Leaflet: kafelki, warstwy, skala, kotwice georeferencji
+  wykonanie.html           dziennik wykonawczy (as-built)
+  karta_druk.html          karta odcinka na jedną kartkę A4
+  qr.html                  arkusz kodów QR do wydruku
+  offline.html             ekran przy braku zasięgu
   osnowa.html / materialy.html / importy.html
   login.html               ekran logowania (własny szkielet, poza base.html)
   panel.html               konta użytkowników
@@ -150,8 +214,12 @@ pages/
 |---|---|
 | `css/app.css` | style własne: kafelki, gęste tabele, rysunek SVG profilu |
 | `css/motywy.css` | cztery motywy — patrz [`08-motywy.md`](08-motywy.md) |
+| `service-worker.js` | praca bez zasięgu — patrz [`12`](12-praca-w-terenie.md) |
+| `manifest.webmanifest`, `ikony/` | instalacja aplikacji na telefonie |
 | `js/app.js` | formatowanie liczb po polsku, filtr tabel, kopiowanie do schowka, przełącznik motywu |
-| `vendor/` | **jQuery 3.7.1, Bootstrap 5.3.3 + Icons, Tailwind 3.4 — lokalnie, bez CDN.** Na budowie bywa bez zasięgu |
+| `js/service-worker.js` | praca bez zasięgu: statyki z cache, dane najpierw z sieci |
+| `manifest.webmanifest` · `ikony/` | instalacja na telefonie |
+| `vendor/` | **jQuery 3.7.1, Bootstrap 5.3.3 + Icons, Tailwind 3.4, Leaflet 1.9.4 — lokalnie, bez CDN.** Na budowie bywa bez zasięgu |
 
 ⚠️ **Tailwind musi mieć prefiks `tw-`.** Bez niego jego utility zderzają się
 z komponentami Bootstrapa — `.collapse { visibility: collapse }` czyniło
@@ -166,9 +234,10 @@ nawigację i rozwijane sekcje niewidocznymi. Pilnuje tego `tests/test_ui_regresj
 | `docs/` | **dokumentacja projektowa — wsad, tylko do odczytu.** PDF-y, Excel, osnowa |
 | `docs/project-docs/` | ta dokumentacja techniczna |
 | `docs/sonnet-think-output/` | analizy źródeł danych: jak czytamy rysunek, model danych, podstawy niwelacji |
-| `data/exports/` | wyniki generowane przez aplikację (cache wyrenderowanych map). Można kasować — odtworzy się |
+| `data/exports/mapy`, `kafelki`, `wycinki` | cache obrazów. Można kasować — odtworzy się |
+| `data/exports/siec` | wynik konwertera planów. Kasowanie wymaga ponownego `flask konwertuj-plany` (~2 min) |
 | `scripts/` | pomocnicze skrypty jednorazowe, uruchamiane ręcznie w kontenerze |
-| `tests/` | testy: 126 sztuk |
+| `tests/` | testy: 213 sztuk |
 | `migrations/` | katalog Flask-Migrate (Alembic) |
 
 ---
@@ -196,7 +265,10 @@ flask db-wait                    # czekaj na Postgres
 flask init-db                    # utwórz tabele
 flask import-wszystko            # osnowa + profile + Excel
 flask import-osnowa | import-profile | import-xlsx
-flask ocr-plany [--zapisz]       # próba odczytu planów
+flask konwertuj-plany            # wytnij sieć z planów (wektor, ~2 min)
+flask konwertuj-plany --strony 5,9
+flask audyt-danych               # kontrola jakości danych
+flask ocr-plany [--zapisz]       # droga historyczna, patrz 04
 flask statystyki                 # co jest w bazie
 flask pokaz-odcinek Wyl101 D155
 
@@ -219,6 +291,11 @@ tests/test_szukaj.py           wyszukiwarka i wykaz materiałów
 tests/test_api.py              API i renderowanie stron
 tests/test_auth.py             logowanie, konta, zadania
 tests/test_ui_regresja.py      kolizja Tailwind/Bootstrap, motywy
+tests/test_walidacja.py        jakość danych, odporność importu na powtórzenie
+tests/test_wycinek_pdf.py      wycinek oryginału: legenda, przycięcie, cache
+tests/test_plan_wektor.py      konwerter planów, eksporty, kafelki
+tests/test_georef.py           przekształcenie Helmerta, kontrola dopasowania
+tests/test_wykonanie.py        dziennik as-built, offline, kody QR
 tests/conftest.py              fixture — w tym pułapka z kontekstem aplikacji
 ```
 

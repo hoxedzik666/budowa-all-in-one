@@ -130,3 +130,24 @@ flask pokaz-odcinek Wyl101 D155
   odtworzy się przy pierwszym żądaniu.
 - **Obraz z tesseractem waży ok. 1,2 GB.** Bez OCR (usunięcie `tesseract-ocr*`
   z `Dockerfile`) schodzi do ~330 MB.
+
+---
+
+## Doszło w etapie 4
+
+| Narzędzie | Po co | Dlaczego akurat to |
+|---|---|---|
+| **Leaflet 1.9.4** | mapa z płynnym zoomem, warstwami i podziałką | standard w narzędziach tego typu; 160 kB, wgrany lokalnie jak reszta bibliotek — na budowie bywa bez zasięgu. Ładuje się **tylko na `/mapa`**, nie na każdej stronie |
+| **`qrcode` 8.0** | kody QR na studnie | czysty Python, rysuje przez Pillow, które i tak było w projekcie |
+| PyMuPDF `get_displaylist()` | kafelki mapy | 25 razy szybciej niż renderowanie strony od nowa przy każdym kafelku (5,18 s → 0,21 s na 12 kafelków) |
+| PyMuPDF `show_pdf_page()` | wycinek profilu z oryginału | kopiuje **wektor**, nie obrazek — wycinek da się powiększać i drukować w jakości oryginału |
+| Service Worker (bez biblioteki) | praca bez zasięgu | dwie strategie cache to ~100 linii; Workbox dokładałby narzędzia budowania, których projekt nie ma |
+
+### Czego świadomie nie dodano
+
+- **`ezdxf`** — DXF R12 to kilkadziesiąt linii własnego kodu, a czyta go każdy
+  CAD. Zależność nie zarobiłaby na siebie.
+- **`numpy`/`scipy`** — przekształcenie Helmerta ma cztery niewiadome i zamknięty
+  wzór. Przy takiej skali przejrzystość jest cenniejsza niż ogólność.
+- **`pyproj`** — wszystko dzieje się w jednym układzie (PL-2000/5). Gdyby doszła
+  transformacja między układami, to byłby właściwy moment.

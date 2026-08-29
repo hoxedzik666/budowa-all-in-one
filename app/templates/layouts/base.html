@@ -37,6 +37,16 @@
   </script>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/motywy.css') }}">
+
+  {# Miejsce na arkusze i style potrzebne tylko jednemu widokowi - np. Leaflet
+     na /mapa. Nie ladujemy ich wszedzie, bo strona na budowie ma sie otwierac
+     szybko takze przez slaby zasieg. #}
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
+  <link rel="icon" href="{{ url_for('static', filename='ikony/ikona-192.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='ikony/ikona-192.png') }}">
+  <meta name="theme-color" content="#212529">
+
+  {% block glowa %}{% endblock %}
 </head>
 <body class="bg-body-tertiary">
 
@@ -59,10 +69,12 @@
           ('main.profile',  'Profile',   'graph-down'),
           ('niwelator.widok','Niwelator','binoculars'),
           ('niwelator.ciag_rur','Spadek ciągu','align-bottom'),
+          ('wykonanie.dziennik','Wykonanie','clipboard-check'),
           ('mapa.przegladarka','Mapa',    'map'),
           ('main.osnowa',   'Osnowa',    'pin-map'),
           ('main.materialy','Materiały', 'box-seam'),
           ('main.importy',  'Importy',   'clock-history'),
+          ('pwa.arkusz_kodow', 'Kody QR', 'qr-code'),
         ] %}
         {% for endpoint, etykieta, ikona in pozycje_menu %}
           <li class="nav-item">
@@ -136,6 +148,28 @@
 <script src="{{ url_for('static', filename='vendor/jquery/jquery-3.7.1.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+<script>
+  // Praca bez zasiegu. Rejestracja jest cicha - gdy sie nie uda (stara
+  // przegladarka, polaczenie bez HTTPS), aplikacja dziala jak dotad.
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("/service-worker.js", { scope: "/" })
+        .catch(function () { /* offline bedzie niedostepne, reszta dziala */ });
+    });
+  }
+  // Odpowiedz podana z pamieci przy braku sieci jest oznaczona naglowkiem -
+  // brygadzista musi wiedziec, ze oglada kopie, a nie dane na zywo.
+  if (navigator.onLine === false) {
+    document.addEventListener("DOMContentLoaded", function () {
+      var pasek = document.createElement("div");
+      pasek.className = "alert alert-warning mb-0 rounded-0 text-center py-1 small";
+      pasek.innerHTML = "<strong>Brak zasięgu.</strong> Widzisz dane zapisane " +
+        "w telefonie przy ostatnim połączeniu.";
+      document.body.prepend(pasek);
+    });
+  }
+</script>
 {% block skrypty %}{% endblock %}
 </body>
 </html>

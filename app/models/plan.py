@@ -56,6 +56,11 @@ class PlanSheet(db.Model):
 
     lokalizacje = relationship("PlanLocation", back_populates="strona",
                                cascade="all, delete-orphan")
+    georef = relationship("PlanGeoref", back_populates="strona",
+                          cascade="all, delete-orphan", uselist=False)
+    kotwice = relationship("PlanAnchor", back_populates="strona",
+                           cascade="all, delete-orphan",
+                           order_by="PlanAnchor.id")
 
     def __repr__(self) -> str:
         return f"<PlanSheet s.{self.nr_strony} 1:{self.skala}>"
@@ -108,4 +113,121 @@ class PlanLocation(db.Model):
             "tekst_ocr": self.tekst_ocr,
             "zrodlo": self.zrodlo,
             "zweryfikowane": self.zweryfikowane,
+        }
+
+
+class PlanGeoref(db.Model):
+    """Zwiazanie arkusza planu z ukladem panstwowym PL-2000/5.
+
+    Rysunek nie niesie zadnych wspolrzednych - nie ma warstw, metadanych ani
+    siatki krzyzy. Dopiero wskazanie dwoch punktow o znanych wspolrzednych
+    (kotwic) pozwala policzyc przeksztalcenie. Trzymamy je jako szesc liczb:
+
+        Y (wschod) = ey_x * x_pt + ey_y * y_pt + ey_0
+        X (polnoc) = nx_x * x_pt + nx_y * y_pt + nx_0
+
+    Razem z nim zapisujemy **jakosc dopasowania** - skale, obrot i odchylke.
+    Bez tego nie dalo by sie odroznic arkusza zwiazanego porzadnie od takiego,
+    gdzie ktos wskazal nie ten reper.
+    """
+
+    __tablename__ = "plan_georef"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    strona_id: Mapped[int] = mapped_column(
+        ForeignKey("plan_sheet.id", ondelete="CASCADE"), unique=True, index=True
+    )
+
+    ey_x: Mapped[float] = mapped_column(Numeric(18, 10))
+    ey_y: Mapped[float] = mapped_column(Numeric(18, 10))
+    ey_0: Mapped[float] = mapped_column(Numeric(18, 4))
+    nx_x: Mapped[float] = mapped_column(Numeric(18, 10))
+    nx_y: Mapped[float] = mapped_column(Numeric(18, 10))
+    nx_0: Mapped[float] = mapped_column(Numeric(18, 4))
+
+    # Jakosc dopasowania - zawsze pokazywana obok wyniku.
+    skala_m_na_pt: Mapped[float | None] = mapped_column(Numeric(12, 8))
+    obrot_stopnie: Mapped[float | None] = mapped_column(Numeric(8, 4))
+    rmse_m: Mapped[float | None] = mapped_column(Numeric(10, 3))
+    liczba_kotwic: Mapped[int] = mapped_column(Integer, default=0)
+
+    uklad: Mapped[str] = mapped_column(String(32), default="PL-2000/5")
+    utworzono: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    zmieniono: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    strona = relationship("PlanSheet", back_populates="georef")
+
+    @property
+    def wspolczynniki(self) -> list[float]:
+        return [float(self.ey_x), float(self.ey_y), float(self.ey_0),
+                float(self.nx_x), float(self.nx_y), float(self.nx_0)]
+
+    def przeksztalcenie(self):
+        from app.services.georef import z_wspolczynnikow
+
+        return z_wspolczynnikow(
+            self.wspolczynniki,
+            skala=float(self.skala_m_na_pt or 0),
+            obrot=float(self.obrot_stopnie or 0),
+            rmse=float(self.rmse_m or 0),
+            kotwic=self.liczba_kotwic,
+        )
+
+    def to_dict(self) -> dict:
+        return {
+            "nr_strony": self.strona.nr_strony if self.strona else None,
+            "uklad": self.uklad,
+            **self.przeksztalcenie().to_dict(),
+        }
+
+
+class PlanAnchor(db.Model):
+    """Punkt o znanych wspolrzednych wskazany na arkuszu.
+
+    Zwykle jest to reper z osnowy (`punkt_id`), ale rownie dobrze moze byc
+    dowolny punkt, ktorego wspolrzedne zna geodeta - stad mozliwosc wpisania
+    X i Y wprost.
+    """
+
+    __tablename__ = "plan_anchor"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    strona_id: Mapped[int] = mapped_column(
+        ForeignKey("plan_sheet.id", ondelete="CASCADE"), index=True
+    )
+    punkt_id: Mapped[int | None] = mapped_column(
+        ForeignKey("survey_point.id", ondelete="SET NULL")
+    )
+
+    x_pt: Mapped[float] = mapped_column(Numeric(10, 2))
+    y_pt: Mapped[float] = mapped_column(Numeric(10, 2))
+    x_gis: Mapped[float] = mapped_column(Numeric(12, 3))
+    y_gis: Mapped[float] = mapped_column(Numeric(12, 3))
+    nazwa: Mapped[str | None] = mapped_column(String(64))
+
+    utworzono: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    strona = relationship("PlanSheet", back_populates="kotwice")
+    punkt = relationship("SurveyPoint")
+
+    __table_args__ = (
+        Index("ix_plan_anchor_strona_nazwa", "strona_id", "nazwa", unique=True),
+    )
+
+    def kotwica(self):
+        from app.services.georef import Kotwica
+
+        return Kotwica(float(self.x_pt), float(self.y_pt),
+                       float(self.x_gis), float(self.y_gis), self.nazwa or "")
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "nazwa": self.nazwa,
+            "x_pt": float(self.x_pt),
+            "y_pt": float(self.y_pt),
+            "x_gis": float(self.x_gis),
+            "y_gis": float(self.y_gis),
         }

@@ -18,7 +18,15 @@ from app.models import User
 auth_bp = Blueprint("auth", __name__)
 
 # Endpointy dostepne bez zalogowania.
-JAWNE = {"auth.zaloguj", "static", "api.zdrowie"}
+# Endpointy dostepne bez sesji. Lista jest krotka i kazda pozycja ma powod.
+JAWNE = {
+    "auth.zaloguj",        # inaczej nie dalo by sie zalogowac
+    "static",              # style i skrypty ekranu logowania
+    "api.zdrowie",         # monitoring kontenera dziala bez sesji
+    "pwa.service_worker",  # przegladarka pobiera go przed zalogowaniem
+    "pwa.offline",         # bez tego brak sieci konczy sie ekranem logowania,
+                           # a nie informacja, ze nie ma zasiegu
+}
 
 
 def czy_wymaga_logowania(endpoint: str | None) -> bool:

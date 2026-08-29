@@ -1,6 +1,6 @@
 # Przegląd projektu
 
-> Dokumentacja techniczna narzędzia **Budowa All-in-One** — stan na etap 2.
+> Dokumentacja techniczna narzędzia **Budowa All-in-One** — stan na etap 4.
 
 ---
 
@@ -33,7 +33,7 @@ Zadanie: **budowa obwodnicy miejscowości Krosno Odrzańskie w ciągu DK29**
 | `Profile Scalone.pdf` | 13 arkuszy profili podłużnych | **źródło geometrii** |
 | `Materiał.xlsx` | Studnie / Wpusty / Wyloty / RURY | uzupełnienie + walidator |
 | `!!_DK29_osnowa_ok_v1.txt` | 151 punktów osnowy `nazwa,X,Y,H` | repery do niwelacji |
-| `Plany sytuacyjne Scalone.pdf` | 18 arkuszy planów 1:1000 | mapa (ograniczone — patrz `04`) |
+| `Plany sytuacyjne Scalone.pdf` | 18 arkuszy planów 1:1000 | mapa, sieć wektorowa, kilometraż — patrz `09` |
 
 ---
 
@@ -42,9 +42,16 @@ Zadanie: **budowa obwodnicy miejscowości Krosno Odrzańskie w ciągu DK29**
 ```
 13 arkuszy → 465 profili → 1059 obiektów → 649 odcinków → 7 439,5 m sieci
 1114 wystąpień obiektów na profilach
- 882 połączenia (102 z rysunku + 780 z arkusza)
+ 880 połączeń (100 z rysunku + 780 z arkusza)
  151 punktów osnowy
   32 pozycje materiałowe, w tym 19 pozycji rurowych w 7 średnicach
+   5 odcinków oznaczonych jako podejrzane (patrz `11`)
+```
+
+Z planów sytuacyjnych, osobnym torem (`flask konwertuj-plany`):
+
+```
+18 arkuszy → 704 polilinie → 8 952,9 m sieci → 40 etykiet kilometrażu
 ```
 
 Obiekty według typu:
@@ -73,7 +80,8 @@ docs/*.pdf, *.xlsx, *.txt
   │   pdf_profile_parser.py  ← profile       │
   │   xlsx_importer.py       ← Excel         │
   │   importer.py            ← osnowa + zapis│
-  │   plan_ocr.py            ← plany (OCR)   │
+  │   walidacja.py           ← kontrola      │
+  │   plan_wektor.py         ← plany (wektor)│
   └──────────────┬───────────────────────────┘
                  ▼
           PostgreSQL 16
@@ -81,7 +89,8 @@ docs/*.pdf, *.xlsx, *.txt
            object_occurrence, segment,
            connection, survey_point,
            material_item, plan_sheet,
-           plan_location, import_run)
+           plan_location, plan_georef, plan_anchor,
+           pomiar_wykonawczy, import_run)
                  │
      ┌───────────┴────────────┐
      ▼                        ▼
@@ -89,8 +98,10 @@ docs/*.pdf, *.xlsx, *.txt
    rury.py                 szukaj.py   ← wyszukiwarka
    materialy.py            main.py     ← widoki tabelaryczne
    leveling.py             niwelator.py
-                           mapa.py
-                           api.py
+   spadek_ciagu.py         mapa.py     ← Leaflet + kafelki
+   georef.py               wykonanie.py ← dziennik as-built
+   kafelki.py              pwa.py      ← offline + kody QR
+   wycinek_pdf.py          api.py
                  │
                  ▼
         Jinja2 + Bootstrap 5 + Tailwind + jQuery
@@ -115,7 +126,17 @@ testować bez aplikacji i bez bazy (patrz `tests/test_rury.py`,
 | Kontrola krzyżowa PDF ↔ XLSX | `/importy` | działa |
 | Przeglądarka planów | `/mapa` | działa |
 | Automatyczne umiejscowienie obiektu na planie | OCR | **nie działa** — patrz `04` |
-| Kilometraż z planów | — | **zablokowane** — patrz `04` |
+| Kilometraż z planów | `/mapa`, eksport | działa — żywy tekst, patrz `09` |
+| Wycięcie sieci z planu (wektor) | `flask konwertuj-plany` | działa — 8,95 km, patrz `09` |
+| Georeferencja arkusza (PL-2000/5) | `/mapa`, tryb Kotwica | działa — patrz `10` |
+| Mapa z płynnym zoomem i skalą | `/mapa` | działa |
+| Wycinek oryginału z PDF na żądanie | `/profil/<id>`, karta odcinka | działa |
+| Eksport GeoJSON / DXF / CSV / .pgw | `/mapa/eksport/…` | działa |
+| Dziennik wykonawczy (as-built) | `/wykonanie` | działa — patrz `12` |
+| Praca offline (PWA) | cała aplikacja | działa — patrz `12` |
+| Kody QR na studnie | `/qr` | działa |
+| Karta odcinka do druku A4 | `/odcinek/<od>/<do>/karta` | działa |
+| Audyt jakości danych | `flask audyt-danych`, `/importy` | działa — patrz `11` |
 | Tyczenie ciągu rur (odczyt na łacie) | `/niwelator/ciag-rur` | działa |
 | Podgląd planu na pulpicie | `/` | działa |
 | Motywy graficzne | przełącznik w nawigacji | działa |
@@ -131,8 +152,10 @@ testować bez aplikacji i bez bazy (patrz `tests/test_rury.py`,
 cp .env.example .env
 docker compose up -d --build
 docker compose exec web python -m flask import-wszystko
+docker compose exec web python -m flask konwertuj-plany   # sieć z planów (~2 min)
 docker compose exec web python -m flask utworz-admina     # konto + hasło
-docker compose exec web python -m pytest -q
+docker compose exec web python -m flask audyt-danych      # kontrola jakości
+docker compose exec web python -m pytest -q               # 213 testów
 ```
 
 | Usługa | Adres |
@@ -153,5 +176,9 @@ docker compose exec web python -m pytest -q
 - [`06-struktura-projektu.md`](06-struktura-projektu.md) — **co robi każdy plik i katalog**
 - [`07-uwierzytelnianie-i-uzytkownicy.md`](07-uwierzytelnianie-i-uzytkownicy.md) — role, konta, zadania
 - [`08-motywy.md`](08-motywy.md) — motywy graficzne i pułapka Tailwind/Bootstrap
+- [`09-konwerter-planow.md`](09-konwerter-planow.md) — **jak z rysunku bez etykiet zrobić dane**
+- [`10-georeferencja.md`](10-georeferencja.md) — związanie arkusza z układem PL-2000/5
+- [`11-audyt-danych.md`](11-audyt-danych.md) — **co było zepsute w konwersji do bazy**
+- [`12-praca-w-terenie.md`](12-praca-w-terenie.md) — dziennik wykonawczy, offline, kody QR
 
 Analizy źródeł danych są w [`docs/sonnet-think-output/`](../sonnet-think-output/).

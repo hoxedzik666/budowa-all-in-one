@@ -1,0 +1,21 @@
+{% extends "layouts/base.html" %}
+{% block tytul %}Brak połączenia{% endblock %}
+
+{% block tresc %}
+<div class="kafelek p-4 text-center">
+  <div class="display-5 mb-3"><i class="bi bi-wifi-off text-body-secondary"></i></div>
+  <h1 class="h4 mb-2">Nie ma zasięgu, a tej strony nie mam zapisanej</h1>
+  <p class="text-body-secondary mb-4">
+    Strony i dane, które otworzyłeś wcześniej, działają bez sieci.
+    Tej akurat nie było jeszcze w pamięci telefonu.
+  </p>
+  <p class="mb-4">
+    <a class="btn btn-primary" href="/">Wróć na pulpit</a>
+    <button class="btn btn-outline-secondary" onclick="location.reload()">Spróbuj ponownie</button>
+  </p>
+  <div class="alert alert-warning text-start small mb-0 d-inline-block">
+    <strong>Zanim wyjedziesz na budowę:</strong> otwórz karty odcinków, nad którymi
+    będziesz pracować. To, co raz zobaczysz przy zasięgu, zostaje w telefonie.
+  </div>
+</div>
+{% endblock %}

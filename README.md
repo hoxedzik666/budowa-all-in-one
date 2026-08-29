@@ -15,6 +15,7 @@ Dane wzorcowe: obwodnica **Krosna Odrzańskiego, DK29** (GDDKiA / POLAQUA / High
 cp .env.example .env
 docker compose up -d --build
 docker compose exec web python -m flask import-wszystko
+docker compose exec web python -m flask konwertuj-plany  # sieć z planów (~2 min)
 docker compose exec web python -m flask utworz-admina    # konto + hasło
 ```
 
@@ -65,6 +66,25 @@ w dwóch trybach interpretacji rzędnych.
 **Pilnuje dostępu i zadań** — całe narzędzie jest za logowaniem, ma panel kont
 z rolami i listę zadań globalnych oraz przypisanych.
 
+**Wycina sieć z planów sytuacyjnych** — bez OCR-u. Rysunek jest czystym wektorem,
+a kanalizacja deszczowa ma na nim własny styl kreski, odczytany z legendy.
+Wynik: **8 952,9 m sieci w 704 poliliniach** plus 40 etykiet kilometrażu.
+Eksport do GeoJSON, DXF i CSV.
+
+**Wiąże arkusz z terenem** — wskazujesz dwa repery z osnowy, a program liczy
+przekształcenie Helmerta. Od tego momentu kliknięcie w mapę podaje X, Y
+w **PL-2000/5**, a repery same pojawiają się na planie.
+
+**Pokazuje oryginał** — na żądanie wycina z PDF-a dokładnie ten fragment rysunku,
+razem z kolumną podpisów pasm. Wektorowo, więc da się go powiększać i drukować.
+Po to, żeby dało się sprawdzić, czy liczby w aplikacji zgadzają się z projektem.
+
+**Prowadzi dziennik wykonawczy** — rzędne z wykopu, odchyłki od projektu
+i rzeczywisty spadek. **Pomiar nigdy nie nadpisuje projektu.**
+
+**Działa bez zasięgu** — instaluje się na telefonie i otwiera raz obejrzane
+strony offline. Do tego kody QR na studnie i karta odcinka do druku na A4.
+
 ---
 
 ## Komendy
@@ -74,6 +94,8 @@ docker compose exec web python -m flask import-wszystko      # pełny import
 docker compose exec web python -m flask import-osnowa        # same repery
 docker compose exec web python -m flask import-profile       # sam PDF
 docker compose exec web python -m flask import-xlsx          # sam Excel
+docker compose exec web python -m flask konwertuj-plany      # sieć z planów (wektor)
+docker compose exec web python -m flask audyt-danych         # kontrola jakości danych
 docker compose exec web python -m flask statystyki           # co jest w bazie
 docker compose exec web python -m flask pokaz-odcinek Wyl101 D155
 docker compose exec web python -m pytest -q                  # testy
@@ -88,8 +110,15 @@ GET  /szukaj?q=D155          # główny widok roboczy (HTML)
 GET  /api/szukaj?q=D155
 GET  /api/podpowiedzi?q=D15
 GET  /api/odcinek/Wyl101/D155/rury
-GET  /mapa                   # przeglądarka planów + wskazywanie pozycji
+GET  /mapa                   # mapa: zoom, warstwy, skala, georeferencja
+GET  /mapa/kafelek/<nr>/<z>/<x>/<y>.png
 GET  /mapa/odcinek/<od>/<do>.png
+GET  /mapa/eksport/<nr>.geojson|.dxf|.csv|.pgw
+POST /api/mapa/kotwica       GET /api/mapa/repery/<nr>
+GET  /profil/<id>/wycinek.pdf      # wektorowy wycinek oryginału
+GET  /odcinek/<od>/<do>/karta      # karta do druku A4
+GET  /api/wykonanie/odcinek/<od>/<do>
+GET  /qr  ·  /qr/<kod>.png
 GET  /api/statystyki
 GET  /api/obiekty?szukaj=D15&typ=STUDNIA
 GET  /api/obiekty/D155
@@ -120,15 +149,23 @@ app/
 │   ├── pdf_profile_parser.py   # odczyt profili z PDF (PyMuPDF, po współrzędnych)
 │   ├── importer.py             # PDF + osnowa → baza
 │   ├── xlsx_importer.py        # Materiał.xlsx → baza + walidacja krzyżowa
-│   ├── plan_ocr.py             # próba odczytu planów (patrz docs/project-docs/04)
+│   ├── walidacja.py            # kontrola jakości danych, flaga „podejrzany”
+│   ├── schemat.py              # dokładanie kolumn do istniejącej bazy
+│   ├── plan_wektor.py          # wycięcie sieci z planów po stylu kreski
+│   ├── plan_eksport.py         # GeoJSON / DXF / CSV
+│   ├── georef.py               # związanie arkusza z PL-2000/5 (Helmert)
+│   ├── kafelki.py              # serwer kafelków mapy
+│   ├── wycinek_pdf.py          # fragment oryginalnego rysunku profilu
+│   ├── plan_ocr.py             # droga historyczna (patrz project-docs/04)
 │   ├── rury.py                 # przelicznik 3 m / 6 m / mieszany
 │   ├── materialy.py            # wykaz materiałów odcinka
-│   └── leveling.py             # obliczenia niwelacyjne
-│   ├── spadek_ciagu.py         # tyczenie ciągu rur — odczyt na łacie
-├── blueprints/      # main, api, szukaj, mapa, niwelator, auth, panel, zadania
+│   ├── leveling.py             # obliczenia niwelacyjne
+│   └── spadek_ciagu.py         # tyczenie ciągu rur — odczyt na łacie
+├── blueprints/      # main, api, szukaj, mapa, niwelator, auth, panel,
+│                    # zadania, wykonanie, pwa
 ├── templates/       # Jinja2 + Bootstrap 5
-└── static/vendor/   # jQuery 3.7.1, Bootstrap 5.3.3, Tailwind 3.4 — lokalnie,
-                     # bez CDN, bo na budowie bywa bez zasięgu
+└── static/vendor/   # jQuery 3.7.1, Bootstrap 5.3.3, Tailwind 3.4, Leaflet 1.9.4
+                     # — lokalnie, bez CDN, bo na budowie bywa bez zasięgu
 docs/
 ├── Profile Scalone.pdf, Materiał.xlsx, !!_DK29_osnowa_ok_v1.txt
 ├── project-docs/                      # dokumentacja techniczna i instrukcja
@@ -136,8 +173,15 @@ docs/
 │   ├── 01-instrukcja-obslugi.md
 │   ├── 02-technologie.md
 │   ├── 03-przelicznik-rur.md           # rury 3 m i 6 m, algorytm, przykłady
-│   ├── 04-ocr-planow.md                # plany: co się udało, a co nie
-│   └── 05-api.md
+│   ├── 04-ocr-planow.md                # plany OCR-em: droga historyczna
+│   ├── 05-api.md
+│   ├── 06-struktura-projektu.md        # co robi każdy plik
+│   ├── 07-uwierzytelnianie-i-uzytkownicy.md
+│   ├── 08-motywy.md
+│   ├── 09-konwerter-planow.md          # sieć z rysunku po stylu kreski
+│   ├── 10-georeferencja.md             # związanie arkusza z terenem
+│   ├── 11-audyt-danych.md              # co było zepsute i jak naprawione
+│   └── 12-praca-w-terenie.md           # dziennik, offline, kody QR
 └── sonnet-think-output/                # analizy źródeł danych
     ├── 01-niwelacja-podstawy.md        # reper, rzędne, niwelator, wzory
     ├── 02-analiza-profile-scalone.md   # jak czytam rysunek
@@ -148,8 +192,8 @@ docs/
 
 ## Stos
 
-Flask 3 · SQLAlchemy 2 · PostgreSQL 16 · PyMuPDF · openpyxl · gunicorn ·
-Bootstrap 5 + Tailwind + jQuery · Docker Compose
+Flask 3 · SQLAlchemy 2 · PostgreSQL 16 · PyMuPDF · openpyxl · qrcode · gunicorn ·
+Bootstrap 5 + Tailwind + jQuery + Leaflet · Service Worker · Docker Compose
 
 ---
 
@@ -163,15 +207,29 @@ Bootstrap 5 + Tailwind + jQuery · Docker Compose
 - **Studnia ma tyle rzędnych dna, ile wchodzi do niej rur.** Jako kanoniczną
   przyjmujemy najniższą (odpływ); reszta jest w wystąpieniach i włączeniach.
 - **Rozbieżności nie są ukrywane** — zakładka *Importy* pokazuje 67 ostrzeżeń
-  z PDF i 41 rozbieżności PDF↔XLSX. To lista miejsc do sprawdzenia
-  w dokumentacji, nie błędy programu.
+  z PDF i 41 rozbieżności PDF↔XLSX, plus **5 odcinków oznaczonych jako
+  podejrzane** (długość 0,00 m, spadek 31%). To lista miejsc do sprawdzenia
+  w dokumentacji, nie błędy programu — poprawnych wartości nie zgadujemy.
 - **Rury PRAGMA opisane są średnicą zewnętrzną**: profilowe Ø300 to katalogowe
   OD315, a Ø600 to OD630. Bez tego przeliczenia te odcinki nie znalazłyby
   żadnej pozycji materiałowej.
 - **Tailwind musi mieć prefiks `tw-`.** Bez niego jego utility zderzają się
   z Bootstrapem — `.collapse { visibility: collapse }` czyniło nawigację
   i rozwijane sekcje niewidocznymi. Pilnuje tego `tests/test_ui_regresja.py`.
-- **Etykiety na planach sytuacyjnych są zamienione na krzywe** — automat ich nie
-  odczyta (sprawdzone czterema metodami, `docs/project-docs/04-ocr-planow.md`).
-  Pozycję obiektu wskazuje się raz, klikając w mapę na `/mapa`; potem wycinek
-  mapy i odległości liczą się same.
+- **Etykiety na planach są krzywymi, ale rysunek nie jest ślepym zaułkiem.**
+  OCR faktycznie nie odczyta ani jednego kodu — za to sieć da się wyciąć po
+  **stylu kreski** odczytanym z legendy (`09-konwerter-planow.md`). Kodów
+  obiektów to nie odzyska, bo ich w pliku po prostu nie ma; te wskazuje się raz,
+  klikając w mapę.
+- **Dwie kotwice georeferencji zawsze pasują idealnie** — cztery równania,
+  cztery niewiadome. Odchyłka nic wtedy nie mówi; sprawdzianem jest dopiero
+  trzecia kotwica, a przy dwóch — zgodność skali z 1:1000.
+- **Odległość na odcinku liczy się od pierwszego obiektu w nazwie.** Na
+  `Wyl101-D155` metr zerowy jest przy `Wyl101` — mimo że profil rysowany jest
+  od wylotu w górę, więc `od` bywa niższym końcem.
+- **Import był podatny na powtórzenie** — dwukrotne uruchomienie dublowało
+  połączenia (2442 wiersze zamiast 880), a rzędne z rysunku nigdy się nie
+  odświeżały. Oba błędy naprawione i pilnowane testami (`11-audyt-danych.md`).
+- **Kafelki mapy renderują się z listy wyświetlania PyMuPDF** — 25 razy szybciej
+  niż przetwarzanie strony od nowa przy każdym kafelku. Bez tego zoom by się
+  zacinał.

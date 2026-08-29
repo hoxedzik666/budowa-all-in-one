@@ -127,6 +127,69 @@ def register_cli(app: Flask) -> None:
             click.echo(f"    ostrzezen: {bieg.liczba_ostrzezen} | {bieg.statystyki}")
         _podsumowanie()
 
+    @app.cli.command("konwertuj-plany")
+    @click.option("--strony", default="", help="Np. 5,9,13. Puste = wszystkie.")
+    @click.option("--styl", default="KD_GRAWITACYJNA", show_default=True)
+    def konwertuj_plany(strony: str, styl: str) -> None:
+        """Wytnij siec z planow sytuacyjnych i zapisz wynik na dysku.
+
+        Wycinanie jednej strony to kilka sekund, calego pliku ponad dwie minuty -
+        za dlugo na zadanie HTTP. Dlatego robi sie to raz, komenda, a widoki
+        i eksporty czytaja gotowy wynik.
+        """
+        from app.services.plan_eksport import do_json
+        from app.services.plan_wektor import wytnij_siec
+
+        sciezka = _sciezka(None, "Plany sytuacyjne Scalone.pdf")
+        if not sciezka.exists():
+            raise SystemExit(f"Brak pliku {sciezka}")
+
+        katalog = Path(app.config["EXPORT_DIR"]) / "siec"
+        katalog.mkdir(parents=True, exist_ok=True)
+
+        import fitz
+
+        doc = fitz.open(sciezka)
+        wszystkie = list(range(1, doc.page_count + 1))
+        numery = [int(x) for x in strony.split(",") if x.strip()] or wszystkie
+
+        click.echo(f"Wycinam styl {styl} z {len(numery)} stron ...")
+        suma_m, suma_polilinii, suma_km = 0.0, 0, 0
+        for nr in numery:
+            if not 1 <= nr <= doc.page_count:
+                click.echo(f"  strona {nr}: nie ma takiej strony")
+                continue
+            siec = wytnij_siec(doc[nr - 1], nr, styl)
+            (katalog / f"strona-{nr:02d}.json").write_text(do_json(siec), encoding="utf-8")
+            podsumowanie = siec.podsumowanie()
+            suma_m += podsumowanie["dlugosc_m"]
+            suma_polilinii += podsumowanie["polilinii"]
+            suma_km += podsumowanie["etykiet_kilometrazu"]
+            click.echo(
+                f"  s.{nr:2d}  polilinii={podsumowanie['polilinii']:3d}"
+                f"  wezlow={podsumowanie['wezlow']:3d}"
+                f"  dlugosc={podsumowanie['dlugosc_m']:9.1f} m"
+                f"  km-etykiet={podsumowanie['etykiet_kilometrazu']:2d}"
+                f"  (sciezek na stronie: {podsumowanie['sciezek_na_stronie']})"
+            )
+        doc.close()
+
+        from app.models import Segment
+        from sqlalchemy import func as _f
+
+        w_bazie = float(db.session.scalar(select(_f.sum(Segment.dlugosc_m))) or 0)
+        click.echo("")
+        click.echo(f"Razem z rysunku: {suma_m:.1f} m w {suma_polilinii} poliliniach")
+        click.echo(f"Odcinki w bazie: {w_bazie:.1f} m (z profili podluznych)")
+        if w_bazie:
+            click.echo(f"Stosunek:        {suma_m / w_bazie:.2f}")
+            click.echo("  Wynik powyzej 1,0 jest normalny: arkusze zachodza na siebie")
+            click.echo("  na stykach, wiec te same przewody licza sie po dwa razy.")
+            click.echo("  Wynik wyraznie ponizej 1,0 oznaczalby, ze filtr stylu")
+            click.echo("  czegos nie lapie.")
+        click.echo(f"Etykiet kilometrazu: {suma_km}")
+        click.echo(f"Wynik w {katalog}")
+
     @app.cli.command("audyt-danych")
     @click.option("--kategoria", default="", help="Pokaz tylko jedna kategorie problemow.")
     @click.option("--ile", default=15, show_default=True, help="Ile przykladow na kategorie.")

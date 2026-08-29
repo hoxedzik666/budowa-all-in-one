@@ -1,0 +1,89 @@
+{% extends "layouts/base.html" %}
+{% block tytul %}Kody QR na studnie{% endblock %}
+
+{% block glowa %}
+<style>
+  .naklejka {
+    border: 1px dashed #adb5bd; border-radius: .35rem; padding: .4rem;
+    text-align: center; break-inside: avoid; background: #fff; color: #000;
+  }
+  .naklejka img { width: 100%; height: auto; max-width: 8rem; }
+  .naklejka .kod { font: 700 1.05rem/1.2 system-ui, sans-serif; margin-top: .15rem; }
+  .naklejka .rzedna { font: 600 .78rem/1.3 system-ui, sans-serif; }
+  .naklejka .stopka { font: .62rem/1.2 system-ui, sans-serif; color: #555; }
+
+  @media print {
+    /* Na wydruku zostaja same naklejki - bez nawigacji, formularza i tla. */
+    nav, .bez-druku, footer { display: none !important; }
+    body { background: #fff !important; }
+    .kafelek { border: 0 !important; box-shadow: none !important; padding: 0 !important; }
+    .naklejka { border-style: solid; border-color: #000; }
+    @page { margin: 8mm; }
+  }
+</style>
+{% endblock %}
+
+{% block naglowek %}
+<div class="bez-druku d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-1">Kody QR na studnie</h1>
+    <p class="text-body-secondary mb-0">
+      Studnia w terenie nie ma na sobie numeru. Naklejka z kodem zamienia
+      szukanie w dokumentacji na jedno zeskanowanie — kod prowadzi wprost
+      do karty obiektu z rzędnymi i wykazem rur.
+    </p>
+  </div>
+  <form class="d-flex gap-2" method="get">
+    <input class="form-control form-control-sm" name="szukaj" value="{{ szukaj }}"
+           placeholder="np. D1" style="width: 9rem">
+    <select name="typ" class="form-select form-select-sm" style="width: 10rem">
+      <option value="">wszystkie typy</option>
+      {% for t in typy %}
+        <option value="{{ t.name }}" {% if typ == t.name %}selected{% endif %}>{{ t.value }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-sm btn-outline-primary">Pokaż</button>
+    <button class="btn btn-sm btn-primary" type="button" onclick="window.print()">
+      <i class="bi bi-printer"></i> Drukuj
+    </button>
+  </form>
+</div>
+{% endblock %}
+
+{% block tresc %}
+{% if not obiekty %}
+  <div class="alert alert-info bez-druku">
+    Nic nie pasuje do tego filtra.
+  </div>
+{% else %}
+<div class="kafelek p-3">
+  <p class="bez-druku small text-body-secondary">
+    {{ obiekty | length }} naklejek.
+    {% if obiekty | length == limit %}
+      To maksimum na jeden arkusz — zawęź filtr, żeby wydrukować resztę.
+    {% endif %}
+    Drukuj na folii samoprzylepnej; kod ma podwyższoną korekcję błędów, więc
+    da się go odczytać także zachlapany.
+  </p>
+
+  <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-2">
+    {% for o in obiekty %}
+      <div class="col">
+        <div class="naklejka">
+          <img src="{{ url_for('pwa.kod_qr', kod=o.kod) }}" alt="Kod QR obiektu {{ o.kod }}"
+               loading="lazy">
+          <div class="kod">{{ o.kod }}</div>
+          {% if o.rzedna_dna_kanalu is not none %}
+            <div class="rzedna">dno {{ o.rzedna_dna_kanalu | liczba(2) }}</div>
+          {% endif %}
+          {% if o.srednica_studni_mm %}
+            <div class="stopka">DN{{ o.srednica_studni_mm }}</div>
+          {% endif %}
+          <div class="stopka">DK29 · Krosno Odrz.</div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,14 +1,50 @@
 {% extends "layouts/base.html" %}
 {% block tytul %}Plany sytuacyjne{% endblock %}
 
+{% block glowa %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet/leaflet.css') }}">
+<style>
+  /* Mapa musi miec wysokosc podana wprost - Leaflet nie wyliczy jej sam. */
+  #mapa { height: 76vh; min-height: 24rem; background: #fff; }
+  [data-motyw="warsztat"] #mapa,
+  [data-bs-theme="dark"] #mapa { background: #f6f6f6; }
+
+  .podzialka {
+    background: rgba(255,255,255,.85); padding: .25rem .5rem; border-radius: .25rem;
+    font: 600 .75rem/1 system-ui, sans-serif; color: #111; border: 1px solid #999;
+  }
+  .podzialka .kreska { height: .4rem; border: 2px solid #111; border-top: 0; margin-top: .2rem; }
+  .znacznik-obiektu {
+    background: #0d6efd; color: #fff; border-radius: 999px; padding: 1px 6px;
+    font: 600 11px/1.4 system-ui, sans-serif; white-space: nowrap;
+    border: 1px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4);
+  }
+  .znacznik-obiektu.niepewny { background: #fd7e14; }
+  .znacznik-repera {
+    background: #198754; color: #fff; border-radius: 3px; padding: 1px 5px;
+    font: 600 11px/1.4 system-ui, sans-serif; white-space: nowrap;
+    border: 1px solid #fff;
+  }
+  .znacznik-kotwicy {
+    background: #dc3545; color: #fff; border-radius: 3px; padding: 1px 6px;
+    font: 700 11px/1.4 system-ui, sans-serif; white-space: nowrap;
+    border: 2px solid #fff;
+  }
+  .znacznik-km {
+    background: #6f42c1; color: #fff; border-radius: 3px; padding: 0 4px;
+    font: 600 10px/1.4 system-ui, sans-serif; white-space: nowrap;
+  }
+</style>
+{% endblock %}
+
 {% block naglowek %}
 <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
   <div>
     <h1 class="h3 mb-1">Plany sytuacyjne</h1>
     <p class="text-body-secondary mb-0">
-      Etykiety na tych rysunkach są zamienione na krzywe wektorowe, więc program nie
-      odczyta ich automatycznie. Pozycję obiektu wskazuje się raz — kliknięciem w mapę.
-      Od tego momentu działa wycinek mapy przy odcinku i odległości do sąsiadów.
+      Rysunek wektorowy, ale bez etykiet — kody obiektów są na nim krzywymi, nie tekstem.
+      Sieć da się z niego wyciąć po stylu kreski; nazwy przypisuje się wskazaniem.
+      Po wskazaniu <strong>dwóch reperów</strong> arkusz zna swoje miejsce w terenie.
     </p>
   </div>
   <form method="get" class="d-flex gap-2 align-items-center">
@@ -33,78 +69,137 @@
 {% else %}
 
 <div class="row g-3">
-  <div class="col-lg-9">
+  <div class="col-xl-9">
     <div class="kafelek p-2">
-      <div class="d-flex justify-content-between align-items-center mb-2 px-2">
-        <div class="small text-body-secondary">
-          Arkusz {{ strona.szerokosc_pt | liczba(0) }} × {{ strona.wysokosc_pt | liczba(0) }} pt,
-          skala 1:{{ strona.skala }}
-        </div>
-        <div class="btn-group btn-group-sm">
-          <button class="btn btn-outline-secondary" id="tryb-podglad">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2 px-1">
+        <div class="btn-group btn-group-sm" role="group">
+          <button class="btn btn-outline-secondary active" data-tryb="podglad">
             <i class="bi bi-eye"></i> Podgląd
           </button>
-          <button class="btn btn-outline-primary" id="tryb-wskaz">
-            <i class="bi bi-geo-alt"></i> Wskaż pozycję
+          <button class="btn btn-outline-primary" data-tryb="obiekt">
+            <i class="bi bi-geo-alt"></i> Wskaż obiekt
+          </button>
+          <button class="btn btn-outline-danger" data-tryb="kotwica">
+            <i class="bi bi-pin-map"></i> Kotwica
+          </button>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+          <label class="form-label mb-0 small text-body-secondary">Skala</label>
+          <select id="wybor-skali" class="form-select form-select-sm" style="width: 8rem">
+            <option value="">dowolna</option>
+            <option value="250">1:250</option>
+            <option value="500">1:500</option>
+            <option value="1000" selected>1:1000</option>
+            <option value="2000">1:2000</option>
+            <option value="5000">1:5000</option>
+          </select>
+          <button class="btn btn-sm btn-outline-secondary" id="dopasuj-arkusz"
+                  title="Zmieść cały arkusz">
+            <i class="bi bi-arrows-angle-contract"></i>
           </button>
         </div>
       </div>
 
-      <div id="plansza" class="position-relative" style="overflow: auto; max-height: 76vh;">
-        <img id="obraz-planu" class="d-block"
-             src="{{ url_for('mapa.strona_png', nr=strona.nr_strony) }}?dpi=90"
-             data-szerokosc-pt="{{ strona.szerokosc_pt }}"
-             data-wysokosc-pt="{{ strona.wysokosc_pt }}"
-             data-strona-id="{{ strona.id }}"
-             alt="Plan sytuacyjny, strona {{ strona.nr_strony }}">
-        <svg id="znaczniki" class="position-absolute top-0 start-0" style="pointer-events: none;"></svg>
+      <div id="mapa" data-strona="{{ strona.nr_strony }}" data-strona-id="{{ strona.id }}"></div>
+
+      <div class="d-flex flex-wrap justify-content-between gap-2 small text-body-secondary mt-2 px-1">
+        <span id="pozycja-kursora">—</span>
+        <span>
+          Arkusz {{ strona.szerokosc_pt | liczba(0) }} × {{ strona.wysokosc_pt | liczba(0) }} pt,
+          skala rysunku 1:{{ strona.skala }}
+        </span>
       </div>
     </div>
   </div>
 
-  <div class="col-lg-3">
+  <div class="col-xl-3">
+    {# ---------------------------------------------------- warstwy #}
     <div class="kafelek p-3 mb-3">
-      <h2 class="h6 text-uppercase text-body-secondary mb-2">Jak wskazać pozycję</h2>
-      <ol class="small ps-3 mb-0">
-        <li>Wpisz kod obiektu, np. <code>D155</code>.</li>
-        <li>Kliknij <em>Wskaż pozycję</em>.</li>
-        <li>Kliknij w mapie miejsce, gdzie ten obiekt leży.</li>
-      </ol>
-      <hr>
-      <div class="mb-2">
-        <label class="form-label small">Kod obiektu</label>
-        <input class="form-control form-control-sm" id="kod-obiektu" placeholder="np. D155">
+      <h2 class="h6 text-uppercase text-body-secondary mb-2">Warstwy</h2>
+      <div class="form-check form-switch small">
+        <input class="form-check-input" type="checkbox" id="w-obiekty" checked>
+        <label class="form-check-label" for="w-obiekty">
+          Wskazane obiekty <span class="badge text-bg-primary" id="licznik-obiekty">0</span>
+        </label>
       </div>
-      <div id="status-wskazania" class="small text-body-secondary">
-        Tryb podglądu — kliknięcie nic nie zapisuje.
+      <div class="form-check form-switch small">
+        <input class="form-check-input" type="checkbox" id="w-siec">
+        <label class="form-check-label" for="w-siec">
+          Sieć wycięta z rysunku <span class="badge text-bg-success" id="licznik-siec">?</span>
+        </label>
+      </div>
+      <div class="form-check form-switch small">
+        <input class="form-check-input" type="checkbox" id="w-km" checked>
+        <label class="form-check-label" for="w-km">
+          Kilometraż <span class="badge text-bg-secondary" id="licznik-km">0</span>
+        </label>
+      </div>
+      <div class="form-check form-switch small">
+        <input class="form-check-input" type="checkbox" id="w-repery">
+        <label class="form-check-label" for="w-repery">
+          Repery z osnowy <span class="badge text-bg-success" id="licznik-repery">0</span>
+        </label>
       </div>
     </div>
 
-    <div class="kafelek p-3">
+    {# ------------------------------------------- wskazywanie obiektu #}
+    <div class="kafelek p-3 mb-3" id="panel-obiekt" hidden>
+      <h2 class="h6 text-uppercase text-body-secondary mb-2">Wskaż obiekt</h2>
+      <input class="form-control form-control-sm mb-2" id="kod-obiektu" placeholder="np. D155">
+      <div id="status-obiektu" class="small text-body-secondary">
+        Wpisz kod i kliknij w mapę.
+      </div>
+    </div>
+
+    {# ------------------------------------------------- georeferencja #}
+    <div class="kafelek p-3 mb-3">
       <h2 class="h6 text-uppercase text-body-secondary mb-2">
-        Wskazane na tym arkuszu <span class="badge text-bg-light">{{ lokalizacje | length }}</span>
+        <i class="bi bi-pin-map"></i> Związanie z terenem
       </h2>
-      <table class="table table-sm tabela-gesta mb-0">
-        <tbody>
-        {% for l in lokalizacje %}
-          <tr>
-            <td>
-              <a href="{{ url_for('szukaj.szukaj', q=l.obiekt.kod) }}">{{ l.obiekt.kod }}</a>
-              {% if not l.pewna %}<span class="badge text-bg-warning">niepewne</span>{% endif %}
-            </td>
-            <td class="liczba small text-body-secondary">
-              {{ l.x_pt | liczba(0) }}, {{ l.y_pt | liczba(0) }}
-            </td>
-            <td>
-              <button class="btn btn-sm btn-link p-0 text-danger" data-usun="{{ l.obiekt.kod }}"
-                      title="Usuń wskazanie"><i class="bi bi-x-lg"></i></button>
-            </td>
-          </tr>
-        {% else %}
-          <tr><td class="text-body-secondary small">Nic jeszcze nie wskazano.</td></tr>
-        {% endfor %}
-        </tbody>
-      </table>
+
+      <div id="stan-georef" class="small mb-2"></div>
+
+      <div id="panel-kotwica" hidden>
+        <label class="form-label small mb-1">Reper z osnowy albo współrzędne</label>
+        <input class="form-control form-control-sm mb-1" id="nazwa-kotwicy" placeholder="np. o41">
+        <div class="row g-1 mb-2">
+          <div class="col"><input class="form-control form-control-sm" id="x-gis" placeholder="X (płn.)"></div>
+          <div class="col"><input class="form-control form-control-sm" id="y-gis" placeholder="Y (wsch.)"></div>
+        </div>
+        <div id="status-kotwicy" class="small text-body-secondary">
+          Wpisz nazwę repera i kliknij go na mapie.
+        </div>
+      </div>
+
+      <table class="table table-sm tabela-gesta mt-2 mb-0" id="tabela-kotwic"></table>
+    </div>
+
+    {# ----------------------------------------------------- eksport #}
+    <div class="kafelek p-3">
+      <h2 class="h6 text-uppercase text-body-secondary mb-2">Eksport arkusza</h2>
+      <div class="d-grid gap-1">
+        <a class="btn btn-sm btn-outline-secondary"
+           href="{{ url_for('mapa.eksport_sieci', nr=strona.nr_strony, format_='geojson') }}">
+          <i class="bi bi-filetype-json"></i> GeoJSON — QGIS
+        </a>
+        <a class="btn btn-sm btn-outline-secondary"
+           href="{{ url_for('mapa.eksport_sieci', nr=strona.nr_strony, format_='dxf') }}">
+          <i class="bi bi-vector-pen"></i> DXF — CAD
+        </a>
+        <a class="btn btn-sm btn-outline-secondary"
+           href="{{ url_for('mapa.eksport_sieci', nr=strona.nr_strony, format_='csv') }}">
+          <i class="bi bi-filetype-csv"></i> CSV — węzły do tyczenia
+        </a>
+        <a class="btn btn-sm btn-outline-secondary" id="link-pgw"
+           href="{{ url_for('mapa.plik_swiata_strony', nr=strona.nr_strony) }}">
+          <i class="bi bi-globe"></i> Plik świata .pgw
+        </a>
+      </div>
+      <p class="small text-body-secondary mt-2 mb-0">
+        Bez związania z terenem pliki mają współrzędne strony, nie państwowe —
+        jest to zapisane w środku każdego z nich.
+      </p>
     </div>
   </div>
 </div>
@@ -112,72 +207,336 @@
 {% endblock %}
 
 {% block skrypty %}
+<script src="{{ url_for('static', filename='vendor/leaflet/leaflet.js') }}"></script>
 <script>
 $(function () {
-  var wskazywanie = false;
-  var obraz = $("#obraz-planu");
-  if (!obraz.length) return;
+  var pojemnik = document.getElementById("mapa");
+  if (!pojemnik) return;
 
-  var szerPt = parseFloat(obraz.data("szerokosc-pt"));
-  var wysPt = parseFloat(obraz.data("wysokosc-pt"));
-  var stronaId = obraz.data("strona-id");
+  var nrStrony = parseInt(pojemnik.dataset.strona, 10);
+  var stronaId = parseInt(pojemnik.dataset.stronaId, 10);
+  var tryb = "podglad";
+  var opis = null;
+  var ptNaPiksel0 = 1;
 
-  function rysujZnaczniki() {
-    var svg = $("#znaczniki");
-    svg.attr({ width: obraz.width(), height: obraz.height() });
+  var mapa = L.map("mapa", {
+    crs: L.CRS.Simple,
+    // Zoom ulamkowy - inaczej nie da sie ustawic dokladnie skali 1:500.
+    zoomSnap: 0,
+    zoomDelta: 0.5,
+    attributionControl: false,
+    maxZoom: 8
+  });
+
+  var warstwy = {
+    obiekty: L.layerGroup(),
+    kotwice: L.layerGroup(),
+    siec: L.layerGroup(),
+    km: L.layerGroup(),
+    repery: L.layerGroup()
+  };
+
+  // Punkt rysunku (PDF) -> wspolrzedne mapy. Zoom 0 miesci arkusz w jednym
+  // kafelku 256 px, wiec caly uklad opiera sie o ten jeden przelicznik.
+  function pdfNaMape(x, y) {
+    return mapa.unproject([x / ptNaPiksel0, y / ptNaPiksel0], 0);
   }
-  obraz.on("load", rysujZnaczniki);
-  $(window).on("resize", rysujZnaczniki);
-  rysujZnaczniki();
+  function mapaNaPdf(latlng) {
+    var p = mapa.project(latlng, 0);
+    return { x: p.x * ptNaPiksel0, y: p.y * ptNaPiksel0 };
+  }
+  function metryNaPiksel() {
+    return ptNaPiksel0 * Math.pow(2, -mapa.getZoom()) * opis.metry_na_punkt;
+  }
 
-  $("#tryb-wskaz").on("click", function () {
-    wskazywanie = true;
-    $(this).addClass("active");
-    $("#tryb-podglad").removeClass("active");
-    obraz.css("cursor", "crosshair");
-    $("#status-wskazania").html('<span class="text-primary">Kliknij w mapę, żeby zapisać pozycję.</span>');
-  });
-  $("#tryb-podglad").on("click", function () {
-    wskazywanie = false;
-    $(this).addClass("active");
-    $("#tryb-wskaz").removeClass("active");
-    obraz.css("cursor", "default");
-    $("#status-wskazania").text("Tryb podglądu — kliknięcie nic nie zapisuje.");
+  function znacznik(x, y, klasa, tekst, szerokosc) {
+    return L.marker(pdfNaMape(x, y), {
+      icon: L.divIcon({
+        className: "", html: '<span class="' + klasa + '">' + tekst + "</span>",
+        iconSize: [szerokosc || 40, 16], iconAnchor: [4, 8]
+      })
+    });
+  }
+
+  // ------------------------------------------------------------ podzialka
+  var Podzialka = L.Control.extend({
+    options: { position: "bottomleft" },
+    onAdd: function () {
+      this._el = L.DomUtil.create("div", "podzialka");
+      this._odswiez();
+      mapa.on("zoomend moveend", this._odswiez, this);
+      return this._el;
+    },
+    _odswiez: function () {
+      if (!opis) return;
+      var mnp = metryNaPiksel();
+      // Okragla dlugosc mieszczaca sie w 140 pikselach.
+      var surowa = mnp * 140;
+      var rzad = Math.pow(10, Math.floor(Math.log10(surowa)));
+      var ladna = [1, 2, 5, 10].map(function (k) { return k * rzad; })
+        .filter(function (v) { return v <= surowa; }).pop() || rzad;
+      var piksele = ladna / mnp;
+      // Skala wydruku: 1 piksel CSS to 1/96 cala = 0,2646 mm.
+      var skala = Math.round(mnp / 0.00026458);
+      this._el.innerHTML =
+        '<div>' + (ladna >= 1000 ? (ladna / 1000) + " km" : ladna + " m") +
+        ' <span class="text-body-secondary">· 1:' + skala + "</span></div>" +
+        '<div class="kreska" style="width:' + piksele.toFixed(0) + 'px"></div>';
+    }
   });
 
-  obraz.on("click", function (e) {
-    if (!wskazywanie) return;
-    var kod = $("#kod-obiektu").val().trim();
-    if (!kod) {
-      $("#status-wskazania").html('<span class="text-danger">Najpierw wpisz kod obiektu.</span>');
+  // --------------------------------------------------------------- start
+  $.getJSON("/api/mapa/strona/" + nrStrony, function (dane) {
+    opis = dane;
+    ptNaPiksel0 = Math.max(dane.szerokosc_pt, dane.wysokosc_pt) / dane.bok_kafelka;
+
+    var poludniowyZachod = pdfNaMape(0, dane.wysokosc_pt);
+    var polnocnyWschod = pdfNaMape(dane.szerokosc_pt, 0);
+    var granice = L.latLngBounds(poludniowyZachod, polnocnyWschod);
+
+    L.tileLayer("/mapa/kafelek/" + nrStrony + "/{z}/{x}/{y}.png", {
+      tileSize: dane.bok_kafelka,
+      minZoom: 0,
+      maxZoom: 8,
+      maxNativeZoom: dane.max_zoom,
+      noWrap: true,
+      bounds: granice
+    }).addTo(mapa);
+
+    mapa.setMaxBounds(granice.pad(0.25));
+    mapa.fitBounds(granice);
+    mapa.addControl(new Podzialka());
+    Object.keys(warstwy).forEach(function (k) { warstwy[k].addTo(mapa); });
+
+    rysujObiekty(dane.lokalizacje);
+    rysujKotwice(dane.kotwice);
+    pokazGeoref(dane.georef);
+    wczytajSiec();
+    przelaczWarstwe("siec", false);
+    przelaczWarstwe("repery", false);
+  });
+
+  // ---------------------------------------------------------- rysowanie
+  function rysujObiekty(lista) {
+    warstwy.obiekty.clearLayers();
+    (lista || []).forEach(function (l) {
+      znacznik(l.x_pt, l.y_pt, "znacznik-obiektu" + (l.pewna ? "" : " niepewny"), l.obiekt)
+        .bindPopup('<strong>' + l.obiekt + "</strong><br>" +
+                   '<a href="/szukaj?q=' + encodeURIComponent(l.obiekt) + '">karta odcinka</a>' +
+                   ' · <a href="#" data-usun="' + l.obiekt + '">usuń wskazanie</a>')
+        .addTo(warstwy.obiekty);
+    });
+    $("#licznik-obiekty").text((lista || []).length);
+  }
+
+  function rysujKotwice(lista) {
+    var wiersze = (lista || []).map(function (k) {
+      return "<tr><td>" + k.nazwa + '</td><td class="liczba small">' +
+        k.x_gis.toFixed(1) + "<br>" + k.y_gis.toFixed(1) + "</td>" +
+        '<td><button class="btn btn-sm btn-link p-0 text-danger" data-usun-kotwice="' +
+        k.id + '"><i class="bi bi-x-lg"></i></button></td></tr>';
+    }).join("");
+    $("#tabela-kotwic").html(wiersze ||
+      '<tr><td class="small text-body-secondary">Brak kotwic.</td></tr>');
+
+    warstwy.kotwice.clearLayers();
+    (lista || []).forEach(function (k) {
+      znacznik(k.x_pt, k.y_pt, "znacznik-kotwicy", "⌖ " + k.nazwa)
+        .bindPopup("<strong>" + k.nazwa + "</strong><br>X " + k.x_gis.toFixed(2) +
+                   "<br>Y " + k.y_gis.toFixed(2))
+        .addTo(warstwy.kotwice);
+    });
+  }
+
+  function pokazGeoref(georef) {
+    var el = $("#stan-georef");
+    if (!georef) {
+      el.html('<span class="text-body-secondary">Arkusz nie jest związany z terenem. ' +
+        "Wskaż dwa repery — wtedy kliknięcie w mapę poda współrzędne, a repery " +
+        "z osnowy same pojawią się na planie.</span>");
+      $("#link-pgw").addClass("disabled");
       return;
     }
-    // Piksel na obrazie -> punkt PDF (obraz jest przeskalowana cala strona).
-    var poz = obraz.offset();
-    var px = e.pageX - poz.left;
-    var py = e.pageY - poz.top;
-    var xPt = px / obraz.width() * szerPt;
-    var yPt = py / obraz.height() * wysPt;
+    $("#link-pgw").removeClass("disabled");
+    var dobre = georef.wiarygodne;
+    var kontrola = (georef.kontrola || []).map(function (k) {
+      return k.nazwa + " " + k.odchylka_m.toFixed(2) + " m";
+    }).join(" · ");
+    el.html(
+      '<div class="alert ' + (dobre ? "alert-success" : "alert-warning") +
+      ' py-2 px-2 mb-0 small">' +
+      "<strong>" + (dobre ? "Arkusz związany z terenem" : "Dopasowanie wątpliwe") +
+      "</strong><br>układ " + georef.uklad +
+      "<br>skala 1:" + georef.skala_rysunku +
+      " · obrót " + georef.obrot_stopnie.toFixed(2) + "°" +
+      "<br>odchyłka " + georef.rmse_m.toFixed(2) + " m z " + georef.liczba_kotwic + " kotwic" +
+      (kontrola ? "<br><span class='text-body-secondary'>" + kontrola + "</span>" : "") +
+      (georef.liczba_kotwic < 3
+        ? "<br><em>Dwie kotwice zawsze pasują idealnie — dopiero trzecia to sprawdzian.</em>"
+        : "") +
+      "</div>");
+  }
+
+  function wczytajSiec() {
+    $.getJSON("/api/mapa/siec/" + nrStrony, function (dane) {
+      warstwy.siec.clearLayers();
+      warstwy.km.clearLayers();
+      if (!dane.dostepne) {
+        $("#licznik-siec").text("—").attr("title", dane.powod);
+        return;
+      }
+      $("#licznik-siec").text(dane.polilinii)
+        .attr("title", dane.dlugosc_m + " m wyciętej sieci");
+      dane.polilinie.forEach(function (p) {
+        L.polyline(p.punkty.map(function (pt) { return pdfNaMape(pt[0], pt[1]); }),
+                   { color: "#00b82e", weight: 3, opacity: .85 })
+          .bindPopup("przewód, " + p.dlugosc_m.toFixed(2) + " m<br>" +
+                     '<span class="text-body-secondary">wycięty z rysunku po stylu kreski ' +
+                     "— kod obiektu nie jest na planie zapisany</span>")
+          .addTo(warstwy.siec);
+      });
+      dane.etykiety.forEach(function (e) {
+        znacznik(e.x_pt, e.y_pt, "znacznik-km", e.tekst, 60).addTo(warstwy.km);
+      });
+      $("#licznik-km").text(dane.etykiety.length);
+    });
+  }
+
+  function wczytajRepery() {
+    $.getJSON("/api/mapa/repery/" + nrStrony, function (dane) {
+      warstwy.repery.clearLayers();
+      if (!dane.dostepne) {
+        $("#licznik-repery").text("—").attr("title", dane.powod);
+        return;
+      }
+      dane.repery.forEach(function (r) {
+        znacznik(r.x_pt, r.y_pt, "znacznik-repera", r.nazwa)
+          .bindPopup("<strong>" + r.nazwa + "</strong><br>H " +
+                     (r.h === null ? "—" : r.h.toFixed(3)) + " m n.p.m." +
+                     "<br>X " + r.x_gis.toFixed(2) + "<br>Y " + r.y_gis.toFixed(2))
+          .addTo(warstwy.repery);
+      });
+      $("#licznik-repery").text(dane.repery.length);
+    });
+  }
+
+  // -------------------------------------------------------------- tryby
+  $("[data-tryb]").on("click", function () {
+    tryb = $(this).data("tryb");
+    $("[data-tryb]").removeClass("active");
+    $(this).addClass("active");
+    $("#panel-obiekt").prop("hidden", tryb !== "obiekt");
+    $("#panel-kotwica").prop("hidden", tryb !== "kotwica");
+    $(pojemnik).css("cursor", tryb === "podglad" ? "" : "crosshair");
+  });
+
+  function przelaczWarstwe(nazwa, wlaczona) {
+    $("#w-" + nazwa).prop("checked", wlaczona);
+    if (wlaczona) { mapa.addLayer(warstwy[nazwa]); } else { mapa.removeLayer(warstwy[nazwa]); }
+  }
+  $("#w-obiekty, #w-siec, #w-km, #w-repery").on("change", function () {
+    var nazwa = this.id.slice(2);
+    if (this.checked) {
+      mapa.addLayer(warstwy[nazwa]);
+      if (nazwa === "repery" && !warstwy.repery.getLayers().length) wczytajRepery();
+    } else {
+      mapa.removeLayer(warstwy[nazwa]);
+    }
+  });
+
+  // ------------------------------------------------------- klikniecia
+  mapa.on("mousemove", function (e) {
+    if (!opis) return;
+    var p = mapaNaPdf(e.latlng);
+    var tekst = "rysunek: " + p.x.toFixed(0) + ", " + p.y.toFixed(0) + " pt";
+    if (opis.georef) {
+      var g = opis.georef.wspolczynniki;
+      var yg = g[0] * p.x + g[1] * p.y + g[2];
+      var xg = g[3] * p.x + g[4] * p.y + g[5];
+      tekst = "X " + xg.toFixed(2) + "  Y " + yg.toFixed(2) +
+              '  <span class="text-body-secondary">(' + opis.georef.uklad + ")</span>";
+    }
+    $("#pozycja-kursora").html(tekst);
+  });
+
+  mapa.on("click", function (e) {
+    if (tryb === "podglad") return;
+    var p = mapaNaPdf(e.latlng);
+
+    if (tryb === "obiekt") {
+      var kod = $("#kod-obiektu").val().trim();
+      if (!kod) {
+        $("#status-obiektu").html('<span class="text-danger">Najpierw wpisz kod obiektu.</span>');
+        return;
+      }
+      $.ajax({
+        url: "/api/mapa/pozycja", method: "POST", contentType: "application/json",
+        data: JSON.stringify({ kod: kod, strona_id: stronaId, x_pt: p.x, y_pt: p.y })
+      }).done(function () {
+        $("#status-obiektu").html('<span class="text-success">Zapisano ' + kod + ".</span>");
+        $.getJSON("/api/mapa/strona/" + nrStrony, function (d) {
+          opis.lokalizacje = d.lokalizacje;
+          rysujObiekty(d.lokalizacje);
+          rysujKotwice(d.kotwice);
+        });
+      }).fail(function (x) {
+        $("#status-obiektu").html('<span class="text-danger">' +
+          ((x.responseJSON && x.responseJSON.blad) || "Nie udało się zapisać.") + "</span>");
+      });
+      return;
+    }
+
+    // tryb === "kotwica"
+    var ladunek = { strona_id: stronaId, x_pt: p.x, y_pt: p.y,
+                    reper: $("#nazwa-kotwicy").val().trim() };
+    var xg = parseFloat($("#x-gis").val()), yg = parseFloat($("#y-gis").val());
+    if (!isNaN(xg) && !isNaN(yg)) { ladunek.x_gis = xg; ladunek.y_gis = yg; }
 
     $.ajax({
-      url: "{{ url_for('mapa.zapisz_pozycje') }}",
-      method: "POST",
-      contentType: "application/json",
-      data: JSON.stringify({ kod: kod, strona_id: stronaId, x_pt: xPt, y_pt: yPt })
-    }).done(function () {
-      $("#status-wskazania").html(
-        '<span class="text-success">Zapisano ' + kod + " (" + xPt.toFixed(0) + ", " + yPt.toFixed(0) + " pt).</span>");
-      setTimeout(function () { location.reload(); }, 700);
+      url: "/api/mapa/kotwica", method: "POST", contentType: "application/json",
+      data: JSON.stringify(ladunek)
+    }).done(function (d) {
+      $("#status-kotwicy").html('<span class="text-success">Zapisano ' +
+        d.kotwica.nazwa + ".</span>");
+      opis.georef = d.georef;
+      rysujKotwice(d.kotwice);
+      pokazGeoref(d.georef);
+      if (d.georef && $("#w-repery").is(":checked")) wczytajRepery();
     }).fail(function (x) {
-      var b = (x.responseJSON && x.responseJSON.blad) || "Nie udało się zapisać.";
-      $("#status-wskazania").html('<span class="text-danger">' + b + "</span>");
+      $("#status-kotwicy").html('<span class="text-danger">' +
+        ((x.responseJSON && x.responseJSON.blad) || "Nie udało się zapisać.") + "</span>");
     });
   });
 
-  $(document).on("click", "[data-usun]", function () {
+  $(document).on("click", "[data-usun]", function (e) {
+    e.preventDefault();
     var kod = $(this).data("usun");
     $.ajax({ url: "/api/mapa/pozycja/" + encodeURIComponent(kod), method: "DELETE" })
       .done(function () { location.reload(); });
+  });
+  $(document).on("click", "[data-usun-kotwice]", function () {
+    $.ajax({ url: "/api/mapa/kotwica/" + $(this).data("usun-kotwice"), method: "DELETE" })
+      .done(function (d) {
+        opis.georef = d.georef;
+        rysujKotwice(d.kotwice);
+        pokazGeoref(d.georef);
+      });
+  });
+
+  // ---------------------------------------------------- skala i dopasowanie
+  $("#wybor-skali").on("change", function () {
+    var skala = parseFloat(this.value);
+    if (!skala || !opis) return;
+    // 1 piksel CSS = 1/96 cala = 0,26458 mm; przy skali 1:N ma odpowiadac
+    // 0,26458 * N milimetrom w terenie.
+    var metryNaPikselDocelowe = 0.00026458 * skala;
+    var zoom = Math.log2(ptNaPiksel0 * opis.metry_na_punkt / metryNaPikselDocelowe);
+    mapa.setZoom(Math.max(0, Math.min(8, zoom)));
+  });
+  $("#dopasuj-arkusz").on("click", function () {
+    if (!opis) return;
+    mapa.fitBounds(L.latLngBounds(pdfNaMape(0, opis.wysokosc_pt),
+                                  pdfNaMape(opis.szerokosc_pt, 0)));
   });
 });
 </script>

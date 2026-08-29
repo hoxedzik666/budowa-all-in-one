@@ -84,17 +84,99 @@ gdy celowa biegnie poniżej punktu albo odczyt wychodzi poza 4-metrową łatę.
 
 ---
 
-## Plany sytuacyjne i wskazywanie pozycji
+## Plany sytuacyjne
 
-Etykiety na planach są zamienione na krzywe, więc program **nie odczyta ich sam**
-(dlaczego — [`04-ocr-planow.md`](04-ocr-planow.md)). Pozycję wskazuje się raz:
+Mapa ma płynne przybliżanie, przesuwanie i podziałkę. W prawym górnym rogu
+wybiera się skalę (1:250 … 1:5000) — przydaje się przy drukowaniu wycinka.
 
-1. Wejdź na **Mapa**, wybierz arkusz.
-2. Wpisz kod obiektu, np. `D155`.
-3. Kliknij **Wskaż pozycję**, potem kliknij w mapę tam, gdzie obiekt leży.
+### Warstwy
 
-Od tej chwili przy odcinku pojawia się wycinek mapy z zaznaczeniem, a odległości
-do sąsiadów liczą się automatycznie.
+| Warstwa | Co pokazuje |
+|---|---|
+| Wskazane obiekty | pozycje, które ktoś wskazał ręcznie |
+| Sieć wycięta z rysunku | przewody odczytane z wektora — **bez nazw** |
+| Kilometraż | podpisy `KM:x+yyy` odczytane z rysunku |
+| Repery z osnowy | pojawiają się dopiero po związaniu arkusza z terenem |
+
+### Wskazanie obiektu
+
+Kody obiektów są na planie krzywymi, nie tekstem — program nie odczyta ich sam.
+Pozycję wskazuje się raz:
+
+1. **Mapa** → wybierz arkusz → tryb **Wskaż obiekt**.
+2. Wpisz kod, np. `D155`, i kliknij w mapę tam, gdzie obiekt leży.
+
+Od tej chwili przy odcinku pojawia się wycinek mapy z zaznaczeniem.
+
+### Związanie arkusza z terenem (dwie kotwice)
+
+Żeby mapa zaczęła podawać prawdziwe współrzędne, a repery same wskoczyły
+na plan:
+
+1. Tryb **Kotwica**, wpisz nazwę repera z osnowy (np. `o41`).
+2. Kliknij ten reper na mapie. Powtórz dla drugiego.
+3. Trzeci reper służy do sprawdzenia — **dwa zawsze pasują idealnie**, więc
+   dopiero trzeci coś mówi.
+
+Program pokazuje skalę (musi wyjść ok. 1:1000), obrót i odchyłkę. Skala rzędu
+1:760 oznacza, że któreś wskazanie trafiło w zły punkt.
+
+Szczegóły: [`10-georeferencja.md`](10-georeferencja.md).
+
+---
+
+## Sprawdzenie danych w oryginale
+
+Na stronie profilu i na karcie odcinka jest przycisk **„Sprawdź w oryginale"**.
+Program wycina z `Profile Scalone.pdf` dokładnie ten fragment — razem z kolumną
+podpisów pasm, żeby dało się przeczytać, która liczba jest która — i pokazuje go
+obok danych z aplikacji.
+
+Konwersja rusza **dopiero po kliknięciu**. Wynik można pobrać jako PDF; jest
+wektorowy, więc da się go powiększać i wydrukować w jakości oryginału.
+
+---
+
+## Dziennik wykonawczy
+
+Po ułożeniu rury wpisz rzędną odczytaną z niwelatora — na karcie odcinka
+(**Wpisz pomiar z niwelatora**) albo na `/wykonanie`.
+
+Program od razu podaje:
+
+- **odchyłkę od projektu** i czy mieści się w tolerancji
+  (dno kanału ± 2 cm, dno studni ± 3 cm, teren ± 5 cm),
+- po dwóch pomiarach — **rzeczywisty spadek** i porównanie z projektowym,
+- ostrzeżenie, gdyby woda miała płynąć pod górę.
+
+**Pomiar nie nadpisuje projektu.** To osobny wpis z datą i autorem, więc zawsze
+wiadomo, co zaprojektowano, a co zbudowano.
+
+---
+
+## Praca bez zasięgu
+
+Aplikację można zainstalować na telefonie (przeglądarka proponuje „Dodaj do
+ekranu głównego"). Raz otwarte strony działają potem **bez sieci**.
+
+**Przed wyjazdem na budowę otwórz karty odcinków, nad którymi będziesz
+pracować.** To, co raz zobaczysz przy zasięgu, zostaje w telefonie. Przy braku
+sieci na górze pojawia się pasek ostrzegawczy.
+
+Czego nie da się zrobić offline: zapisać pomiaru ani się zalogować.
+
+### Kody QR
+
+`/qr` drukuje naklejki na studnie — skan telefonem otwiera kartę obiektu.
+Kod ma podwyższoną korekcję błędów, więc da się go odczytać także zachlapany.
+
+---
+
+## Karta odcinka do druku
+
+Przycisk **Karta do druku** na karcie odcinka daje jedną kartkę A4 do teczki:
+profil, rzędne, głębokości wykopu, warianty pocięcia rur i pustą tabelę na
+wpisanie pomiarów ołówkiem.
 
 ---
 
@@ -108,7 +190,9 @@ do sąsiadów liczą się automatycznie.
 | **Profile** | wszystkie profile podłużne z arkuszy |
 | **Osnowa** | 151 reperów z rzędnymi |
 | **Materiały** | arkusz RURY: projekt, dostawy, WZ, czego brakuje |
-| **Importy** | co i kiedy wczytano oraz **wszystkie znalezione rozbieżności** |
+| **Wykonanie** | dziennik as-built: pomiary, odchyłki, rzeczywiste spadki |
+| **Kody QR** | naklejki na studnie do wydruku |
+| **Importy** | co i kiedy wczytano, **rozbieżności** i **odcinki do sprawdzenia** |
 
 ---
 
@@ -119,11 +203,16 @@ kontrola na 900+ węzłach wykazała zgodność z niezmiennikiem
 `zagłębienie = teren − dno` w ponad 99% przypadków.
 
 **Warto sprawdzić w dokumentacji:**
-- **67 ostrzeżeń** z odczytu profili (zakładka *Importy*) — głównie studnie,
-  do których rury wchodzą na różnych rzędnych;
+- **5 odcinków oznaczonych na czerwono** — mają w dokumentacji długość 0,00 m
+  albo spadek 31%. Program ostrzega o nich przy każdej próbie policzenia
+  materiału. Nie zgadujemy poprawnych wartości;
+- **57 odcinków z rozjazdem spadku** — spadek z rysunku nie zgadza się z tym
+  wyliczonym z rzędnych o więcej niż 5‰;
 - **41 rozbieżności PDF ↔ Excel**, w tym cztery powyżej 2 m
   (`Wp428` różni się o **7 m**). Jedno ze źródeł jest nieaktualne — narzędzie
   tego nie rozstrzyga, tylko wskazuje.
+
+Pełny przegląd: `flask audyt-danych` oraz [`11-audyt-danych.md`](11-audyt-danych.md).
 
 **Czego narzędzie nie robi:** nie ocenia poprawności projektu. Minimalne spadki,
 przykrycia i klasy rur to decyzja projektanta.
