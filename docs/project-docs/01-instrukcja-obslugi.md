@@ -154,6 +154,53 @@ wiadomo, co zaprojektowano, a co zbudowano.
 
 ---
 
+## Oznaczanie postępu robót
+
+Każdy odcinek przechodzi ścieżkę:
+
+```
+w projekcie → wytyczony → w trakcie → wykonany → odebrany
+```
+
+Stan przestawia się **na karcie odcinka** (pasek „Stan" nad dziennikiem
+wykonawczym), w widoku **Postęp** albo od razu przy pisaniu raportu dziennego.
+
+**Zgłosić wykonanie może każdy, kto tę robotę zrobił. Odebrać może tylko
+kierownik budowy** — dlatego to dwa osobne stany. Monter i brygadzista nie widzą
+przycisku odbioru.
+
+Przy zgłoszeniu odcinka jako wykonanego program sprawdza pomiary i ostrzega,
+gdy coś nie gra — np. *„2 z 3 pomiarów jest poza tolerancją, największa odchyłka
+0,045 m"* albo *„spadek wyszedł w złą stronę"*. **Nie blokuje** — decyzję
+podejmujesz sam.
+
+Widok **Postęp** pokazuje pasek całej sieci w metrach i listę odcinków, które
+są w robocie. Odcinki „w projekcie" są domyślnie ukryte, żeby nie zasłaniały
+tego, co się dzieje.
+
+### Na mapie
+
+`/mapa` → warstwa **Postęp robót**. Odcinki rysują się kolorem stanu.
+Pod przełącznikiem stoi informacja, ilu odcinków program **nie umie narysować** —
+bo nie mają wskazanej pozycji obu końców. To nie awaria: pozycje wskazuje się
+ręcznie, a im więcej wskażesz, tym pełniejszy obraz.
+
+---
+
+## Raport dzienny
+
+**Raporty** → formularz po prawej. Data, brygada, odcinek, co zrobiono, metry,
+ludzie, sprzęt, pogoda i **przestój z powodem**.
+
+Przestój wpisuj zawsze, gdy wystąpił. Udokumentowany bywa podstawą roszczenia
+terminowego; przypomniany po miesiącu jest bezwartościowy.
+
+Przy raporcie można od razu ustawić stan odcinka — jeden formularz zamiast dwóch.
+
+Monter widzi swoje wpisy, brygadzista i kierownik — całej ekipy.
+
+---
+
 ## Praca bez zasięgu
 
 Aplikację można zainstalować na telefonie (przeglądarka proponuje „Dodaj do
@@ -190,7 +237,9 @@ wpisanie pomiarów ołówkiem.
 | **Profile** | wszystkie profile podłużne z arkuszy |
 | **Osnowa** | 151 reperów z rzędnymi |
 | **Materiały** | arkusz RURY: projekt, dostawy, WZ, czego brakuje |
+| **Postęp** | stan odcinków, pasek postępu całej sieci w metrach |
 | **Wykonanie** | dziennik as-built: pomiary, odchyłki, rzeczywiste spadki |
+| **Raporty** | raporty dzienne brygady, podsumowanie tygodnia |
 | **Kody QR** | naklejki na studnie do wydruku |
 | **Importy** | co i kiedy wczytano, **rozbieżności** i **odcinki do sprawdzenia** |
 

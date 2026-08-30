@@ -23,6 +23,19 @@ from app.models.network import (
     Segment,
     Sheet,
 )
+from app.models.postep import (
+    ETYKIETY,
+    KLASY_PLAKIETKI,
+    KOLORY,
+    SCIEZKA,
+    STANY_GOTOWE,
+    STANY_KIEROWNICTWA,
+    RaportDzienny,
+    ZmianaStatusu,
+    nastepny_stan,
+    poprzedni_stan,
+    wolno_ustawic,
+)
 from app.models.survey import SurveyPoint
 from app.models.task import OTWARTE, Priorytet, StatusZadania, Task
 from app.models.user import Rola, User
@@ -48,6 +61,7 @@ __all__ = [
     "PlanLocation",
     "PlanSheet",
     "Profile",
+    "RaportDzienny",
     "RodzajPomiaru",
     "Rola",
     "TOLERANCJE_M",
@@ -58,9 +72,19 @@ __all__ = [
     "SurveyPoint",
     "Task",
     "TypObiektu",
+    "ZmianaStatusu",
     "TypOdniesienia",
     "User",
     "ZrodloDanych",
     "punkty_na_metry",
+    "ETYKIETY",
+    "KLASY_PLAKIETKI",
+    "KOLORY",
+    "SCIEZKA",
+    "STANY_GOTOWE",
+    "STANY_KIEROWNICTWA",
+    "nastepny_stan",
+    "poprzedni_stan",
     "spadek_wykonany",
+    "wolno_ustawic",
 ]

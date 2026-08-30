@@ -18,13 +18,17 @@ class Rola(str, enum.Enum):
     """Kto co moze.
 
     ADMIN       - zarzadza kontami, ma dostep do wszystkiego
-    KIEROWNIK   - pelny podglad danych, tworzy i przydziela zadania
-    BRYGADZISTA - podglad danych i wlasne zadania
+    KIEROWNIK   - pelny podglad danych, przydziela zadania, ODBIERA odcinki
+    BRYGADZISTA - podglad danych, wlasne zadania, raporty calej brygady
+    MONTER      - czlowiek w wykopie: mierzy, zglasza gotowosc, pisze wlasny
+                  raport. Nie przydziela zadan, nie odbiera robot i nie oglada
+                  cudzych raportow.
     """
 
     ADMIN = "ADMIN"
     KIEROWNIK = "KIEROWNIK"
     BRYGADZISTA = "BRYGADZISTA"
+    MONTER = "MONTER"
 
 
 class User(UserMixin, db.Model):
@@ -67,13 +71,38 @@ class User(UserMixin, db.Model):
         """Dezaktywowane konto nie moze sie zalogowac."""
         return bool(self.aktywny)
 
+    # --- uprawnienia
+    #
+    # Pytamy o mozliwosc, nie o role. Dzieki temu zmiana zakresu uprawnien to
+    # poprawka w jednym miejscu, a nie polowanie na `rola ==` po widokach.
+
     @property
     def jest_adminem(self) -> bool:
         return self.rola == Rola.ADMIN
 
     @property
     def moze_przydzielac(self) -> bool:
+        """Przydzielanie zadan innym osobom."""
         return self.rola in (Rola.ADMIN, Rola.KIEROWNIK)
+
+    @property
+    def moze_odbierac(self) -> bool:
+        """Odbior odcinka i cofniecie odbioru.
+
+        Zglosic wykonanie moze kazdy, kto stoi w wykopie - ale odbior jest
+        decyzja kierownictwa. Stad dwa osobne stany: WYKONANY i ODEBRANY.
+        """
+        return self.rola in (Rola.ADMIN, Rola.KIEROWNIK)
+
+    @property
+    def widzi_cudze_raporty(self) -> bool:
+        """Monter widzi wylacznie swoje wpisy, reszta - calej brygady."""
+        return self.rola != Rola.MONTER
+
+    @property
+    def pracuje_w_wykopie(self) -> bool:
+        """Role, dla ktorych domyslnym widokiem jest robota, nie zestawienia."""
+        return self.rola in (Rola.BRYGADZISTA, Rola.MONTER)
 
     def to_dict(self) -> dict:
         return {

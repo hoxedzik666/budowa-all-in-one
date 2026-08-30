@@ -64,7 +64,14 @@ postawi łatę na górnym karbie. Liczy rzeczywisty spadek po odjęciu średnic 
 w dwóch trybach interpretacji rzędnych.
 
 **Pilnuje dostępu i zadań** — całe narzędzie jest za logowaniem, ma panel kont
-z rolami i listę zadań globalnych oraz przypisanych.
+z czterema rolami (admin, kierownik, brygadzista, **monter**) i listę zadań
+globalnych oraz przypisanych.
+
+**Śledzi postęp robót** — każdy odcinek idzie ścieżką
+*wytyczony → w trakcie → wykonany → odebrany*, z historią zmian. Zgłosić
+wykonanie może każdy, kto był w wykopie; **odebrać — tylko kierownik**.
+Na mapie widać stan robót kolorem, a raport dzienny brygady zapisuje metry,
+ludzi, sprzęt i przestoje.
 
 **Wycina sieć z planów sytuacyjnych** — bez OCR-u. Rysunek jest czystym wektorem,
 a kanalizacja deszczowa ma na nim własny styl kreski, odczytany z legendy.
@@ -118,6 +125,10 @@ POST /api/mapa/kotwica       GET /api/mapa/repery/<nr>
 GET  /profil/<id>/wycinek.pdf      # wektorowy wycinek oryginału
 GET  /odcinek/<od>/<do>/karta      # karta do druku A4
 GET  /api/wykonanie/odcinek/<od>/<do>
+GET  /postep                 POST /postep/<id>/stan
+GET  /api/postep/odcinek/<od>/<do>
+GET  /api/mapa/postep/<nr>   # warstwa postępu na arkuszu
+GET  /raporty                POST /raporty/dodaj
 GET  /qr  ·  /qr/<kod>.png
 GET  /api/statystyki
 GET  /api/obiekty?szukaj=D15&typ=STUDNIA
@@ -156,13 +167,14 @@ app/
 │   ├── georef.py               # związanie arkusza z PL-2000/5 (Helmert)
 │   ├── kafelki.py              # serwer kafelków mapy
 │   ├── wycinek_pdf.py          # fragment oryginalnego rysunku profilu
+│   ├── powiazania.py           # „D155" / „Wyl101-D155" → obiekt lub odcinek
 │   ├── plan_ocr.py             # droga historyczna (patrz project-docs/04)
 │   ├── rury.py                 # przelicznik 3 m / 6 m / mieszany
 │   ├── materialy.py            # wykaz materiałów odcinka
 │   ├── leveling.py             # obliczenia niwelacyjne
 │   └── spadek_ciagu.py         # tyczenie ciągu rur — odczyt na łacie
 ├── blueprints/      # main, api, szukaj, mapa, niwelator, auth, panel,
-│                    # zadania, wykonanie, pwa
+│                    # zadania, wykonanie, postep, pwa
 ├── templates/       # Jinja2 + Bootstrap 5
 └── static/vendor/   # jQuery 3.7.1, Bootstrap 5.3.3, Tailwind 3.4, Leaflet 1.9.4
                      # — lokalnie, bez CDN, bo na budowie bywa bez zasięgu
@@ -181,7 +193,9 @@ docs/
 │   ├── 09-konwerter-planow.md          # sieć z rysunku po stylu kreski
 │   ├── 10-georeferencja.md             # związanie arkusza z terenem
 │   ├── 11-audyt-danych.md              # co było zepsute i jak naprawione
-│   └── 12-praca-w-terenie.md           # dziennik, offline, kody QR
+│   ├── 12-praca-w-terenie.md           # dziennik, offline, kody QR
+│   ├── 13-android-apk.md               # przeniesienie na Androida: analiza
+│   └── 14-postep-robot.md              # stan odcinków, raporty, rola montera
 └── sonnet-think-output/                # analizy źródeł danych
     ├── 01-niwelacja-podstawy.md        # reper, rzędne, niwelator, wzory
     ├── 02-analiza-profile-scalone.md   # jak czytam rysunek
@@ -230,6 +244,14 @@ Bootstrap 5 + Tailwind + jQuery + Leaflet · Service Worker · Docker Compose
 - **Import był podatny na powtórzenie** — dwukrotne uruchomienie dublowało
   połączenia (2442 wiersze zamiast 880), a rzędne z rysunku nigdy się nie
   odświeżały. Oba błędy naprawione i pilnowane testami (`11-audyt-danych.md`).
+- **Zgłoszenie wykonania to nie odbiór.** Dwa osobne stany, bo na budowie robi
+  je kto inny: brygada zgłasza, kierownik odbiera. Reguła jest sprawdzana po
+  stronie serwera, nie tylko przez ukrycie przycisku.
+- **Pole `status` istniało od etapu 1 i nigdy nie było ustawiane** — etap 5 je
+  ożywił, zamiast dokładać nowe.
+- **Nowa rola nie pojawi się w bazie sama.** `create_all()` tworzy typ enum raz
+  i nigdy go nie rusza; wartości dokłada `app/services/schemat.py`. Operacja jest
+  nieodwracalna — Postgres nie ma `DROP VALUE`.
 - **Kafelki mapy renderują się z listy wyświetlania PyMuPDF** — 25 razy szybciej
   niż przetwarzanie strony od nowa przy każdym kafelku. Bez tego zoom by się
   zacinał.

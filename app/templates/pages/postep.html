@@ -1,0 +1,123 @@
+{% extends "layouts/base.html" %}
+{% block tytul %}Postęp robót{% endblock %}
+
+{% block naglowek %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-1">Postęp robót</h1>
+    <p class="text-body-secondary mb-0">
+      Stan każdego odcinka na drodze od projektu do odbioru.
+      <strong>Zgłosić wykonanie może każdy</strong>, kto stoi w wykopie —
+      odbiór należy do kierownika budowy.
+    </p>
+  </div>
+  <form class="d-flex gap-2" method="get">
+    <input class="form-control form-control-sm" name="szukaj" value="{{ szukaj }}"
+           placeholder="np. D155" style="width: 9rem">
+    <select name="stan" class="form-select form-select-sm" onchange="this.form.submit()"
+            style="width: 11rem">
+      <option value="">w toku i gotowe</option>
+      {% for s in stany %}
+        <option value="{{ s.name }}" {% if wybrany == s.name %}selected{% endif %}>
+          {{ etykiety[s] }}
+        </option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-sm btn-outline-primary">Pokaż</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block tresc %}
+
+{# --- pasek postępu całej sieci --- #}
+<div class="kafelek p-3 mb-3">
+  <div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2 mb-2">
+    <h2 class="h6 text-uppercase text-body-secondary mb-0">Cała sieć</h2>
+    <div class="small">
+      <strong>{{ staty.gotowe_m | liczba(1) }}</strong> z
+      {{ staty.razem_m | liczba(1) }} m wykonane
+      (<strong>{{ staty.procent_gotowe | liczba(1) }}%</strong>) ·
+      odebrane {{ staty.procent_odebrane | liczba(1) }}%
+    </div>
+  </div>
+
+  <div class="progress" style="height: 1.6rem" role="progressbar"
+       aria-label="Postęp robót" aria-valuenow="{{ staty.procent_gotowe }}"
+       aria-valuemin="0" aria-valuemax="100">
+    {% for s in stany %}
+      {% set w = staty.wg_stanu[s] %}
+      {% if w.metry and staty.razem_m %}
+        <div class="progress-bar {{ w.klasa | replace('text-bg-', 'bg-') }}
+                    {% if s.name == 'PROJEKT' %}text-dark{% endif %}"
+             style="width: {{ (w.metry / staty.razem_m * 100) | round(2) }}%"
+             title="{{ w.etykieta }}: {{ w.metry }} m / {{ w.sztuk }} odc.">
+          {% if w.metry / staty.razem_m > 0.08 %}{{ w.etykieta }}{% endif %}
+        </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  <div class="d-flex flex-wrap gap-3 mt-2 small">
+    {% for s in stany %}
+      {% set w = staty.wg_stanu[s] %}
+      <span>
+        <span class="badge {{ w.klasa }}">{{ w.etykieta }}</span>
+        {{ w.sztuk }} odc. · {{ w.metry | liczba(1) }} m
+      </span>
+    {% endfor %}
+  </div>
+</div>
+
+{# --- lista odcinków --- #}
+<div class="kafelek p-0">
+  <div class="table-responsive">
+    <table class="table table-sm table-hover tabela-gesta mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Odcinek</th><th class="text-end">Długość</th><th class="text-end">Ø</th>
+          <th>Stan</th><th>Ostatnia zmiana</th><th>Następny krok</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for o in odcinki %}
+        {% set stan = o.status or stany[0] %}
+        <tr>
+          <td class="fw-semibold">
+            <a href="{{ url_for('szukaj.szukaj', q=o.obiekt_od.kod) }}">{{ o.nazwa }}</a>
+            {% if o.podejrzany %}
+              <i class="bi bi-exclamation-octagon-fill text-danger"
+                 title="{{ o.powod_podejrzenia }}"></i>
+            {% endif %}
+          </td>
+          <td class="liczba">{{ o.dlugosc_m | liczba(2) }} m</td>
+          <td class="liczba">{% if o.dn_mm %}Ø{{ o.dn_mm }}{% else %}—{% endif %}</td>
+          <td><span class="badge {{ klasy[stan] }}">{{ etykiety[stan] }}</span></td>
+          <td class="small text-body-secondary">
+            {% set z = ostatnie.get(o.id) %}
+            {% if z %}
+              {{ z.utworzono.strftime("%Y-%m-%d") }} ·
+              {{ z.autor.login if z.autor else "—" }}
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {% include "partials/przyciski_stanu.html" %}
+          </td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="6" class="text-body-secondary p-3">
+            {% if wybrany %}
+              Żaden odcinek nie jest w tym stanie.
+            {% else %}
+              Nic jeszcze nie ruszyło. Pierwszy odcinek oznacz jako wytyczony
+              na jego karcie albo w <a href="{{ url_for('postep.raporty') }}">raporcie dziennym</a>.
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -44,13 +44,57 @@ docker compose exec web python -m flask lista-kont
 
 ## Role
 
-| Rola | Może |
-|---|---|
-| **ADMIN** | wszystko + zarządzanie kontami |
-| **KIEROWNIK** | pełny podgląd danych, tworzy i przydziela zadania całej ekipie |
-| **BRYGADZISTA** | podgląd danych, zadania globalne i własne; przypisuje zadania tylko sobie |
+| | ADMIN | KIEROWNIK | BRYGADZISTA | MONTER |
+|---|:--:|:--:|:--:|:--:|
+| podgląd danych, wyszukiwarka, niwelator | ✔ | ✔ | ✔ | ✔ |
+| pomiar wykonawczy | ✔ | ✔ | ✔ | ✔ |
+| stan odcinka: wytyczony / w trakcie | ✔ | ✔ | ✔ | ✔ |
+| zgłoszenie odcinka jako **wykonany** | ✔ | ✔ | ✔ | ✔ |
+| **odbiór** odcinka i cofnięcie odbioru | ✔ | ✔ | — | — |
+| raport dzienny — własny | ✔ | ✔ | ✔ | ✔ |
+| raport dzienny — podgląd cudzych | ✔ | ✔ | ✔ | — |
+| przydzielanie zadań innym | ✔ | ✔ | — | — |
+| zarządzanie kontami | ✔ | — | — | — |
 
 Rolę zmienia się w panelu (`/panel/uzytkownicy`) albo bezpośrednio w bazie.
+
+### Dlaczego monter to osobna rola
+
+Różnica monter ↔ brygadzista jest jedna i konkretna: **monter widzi tylko swoje
+raporty**. Reszta pracy w wykopie jest ta sama, bo w wykopie stoją obok siebie.
+
+Podział przebiega tam, gdzie przebiega na budowie: **zgłosić wykonanie może
+każdy, kto tę robotę zrobił — odebrać może tylko kierownik**. Stąd dwa osobne
+stany odcinka, WYKONANY i ODEBRANY.
+
+### Uprawnienia w kodzie
+
+Widoki pytają o **możliwość**, nie o rolę:
+
+```python
+current_user.moze_odbierac          # ADMIN, KIEROWNIK
+current_user.moze_przydzielac       # ADMIN, KIEROWNIK
+current_user.widzi_cudze_raporty    # wszyscy poza monterem
+current_user.jest_adminem
+```
+
+Dzięki temu zmiana zakresu uprawnień to poprawka w `app/models/user.py`,
+a nie polowanie na `rola ==` po szablonach.
+
+⚠️ **Reguły działają po stronie serwera, nie tylko w interfejsie.** Przycisk
+odbioru jest ukrywany monterowi, ale gdyby ktoś wysłał żądanie z pominięciem
+strony, `wolno_ustawic()` i tak je odrzuci. Pilnuje tego
+`test_monter_zglasza_ale_nie_odbiera`.
+
+### Dopisanie roli wymaga zmiany w bazie
+
+`db.create_all()` tworzy typ wyliczeniowy raz i nigdy go nie rusza, więc nowa
+rola w Pythonie **nie pojawi się w Postgresie** — przy pierwszym zapisie wyszedłby
+błąd „invalid input value for enum". Wartości dokłada `app/services/schemat.py`
+przez `ALTER TYPE rola ADD VALUE IF NOT EXISTS`, uruchamiane przy `flask init-db`.
+
+Ta operacja jest **nieodwracalna** — Postgres nie ma `DROP VALUE`. Literówka
+oznacza przebudowę typu.
 
 ---
 

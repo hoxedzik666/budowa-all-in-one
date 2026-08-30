@@ -1,6 +1,6 @@
 # Przegląd projektu
 
-> Dokumentacja techniczna narzędzia **Budowa All-in-One** — stan na etap 4.
+> Dokumentacja techniczna narzędzia **Budowa All-in-One** — stan na etap 5.
 
 ---
 
@@ -90,7 +90,8 @@ docs/*.pdf, *.xlsx, *.txt
            connection, survey_point,
            material_item, plan_sheet,
            plan_location, plan_georef, plan_anchor,
-           pomiar_wykonawczy, import_run)
+           pomiar_wykonawczy, zmiana_statusu,
+           raport_dzienny, import_run)
                  │
      ┌───────────┴────────────┐
      ▼                        ▼
@@ -136,6 +137,11 @@ testować bez aplikacji i bez bazy (patrz `tests/test_rury.py`,
 | Praca offline (PWA) | cała aplikacja | działa — patrz `12` |
 | Kody QR na studnie | `/qr` | działa |
 | Karta odcinka do druku A4 | `/odcinek/<od>/<do>/karta` | działa |
+| Stan odcinka: wytyczony → wykonany → odebrany | karta odcinka, `/postep` | działa — patrz `14` |
+| Warstwa postępu robót na mapie | `/mapa` | działa |
+| Raporty dzienne brygady | `/raporty` | działa |
+| Rola MONTER | `/panel/uzytkownicy` | działa |
+| Aplikacja na Androida (APK) | — | **analiza** — patrz `13` |
 | Audyt jakości danych | `flask audyt-danych`, `/importy` | działa — patrz `11` |
 | Tyczenie ciągu rur (odczyt na łacie) | `/niwelator/ciag-rur` | działa |
 | Podgląd planu na pulpicie | `/` | działa |
@@ -180,5 +186,7 @@ docker compose exec web python -m pytest -q               # 213 testów
 - [`10-georeferencja.md`](10-georeferencja.md) — związanie arkusza z układem PL-2000/5
 - [`11-audyt-danych.md`](11-audyt-danych.md) — **co było zepsute w konwersji do bazy**
 - [`12-praca-w-terenie.md`](12-praca-w-terenie.md) — dziennik wykonawczy, offline, kody QR
+- [`13-android-apk.md`](13-android-apk.md) — **przeniesienie na Androida: analiza i plan**
+- [`14-postep-robot.md`](14-postep-robot.md) — stan odcinków, raporty dzienne, rola montera
 
 Analizy źródeł danych są w [`docs/sonnet-think-output/`](../sonnet-think-output/).

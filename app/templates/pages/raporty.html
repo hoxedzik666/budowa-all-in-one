@@ -1,0 +1,219 @@
+{% extends "layouts/base.html" %}
+{% block tytul %}Raporty dzienne{% endblock %}
+
+{% block naglowek %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-1">Raporty dzienne</h1>
+    <p class="text-body-secondary mb-0">
+      Co brygada zrobiła danego dnia.
+      {% if not current_user.widzi_cudze_raporty %}
+        Widzisz <strong>swoje wpisy</strong>.
+      {% else %}
+        Widzisz wpisy całej ekipy.
+      {% endif %}
+      Przestój ma własną rubrykę nie dla statystyki — udokumentowany bywa
+      podstawą roszczenia terminowego, a przypomniany po miesiącu jest bezwartościowy.
+    </p>
+  </div>
+  <form class="d-flex gap-2" method="get">
+    <input type="date" class="form-control form-control-sm" name="dzien" value="{{ dzien }}">
+    <input class="form-control form-control-sm" name="szukaj" value="{{ szukaj }}"
+           placeholder="odcinek" style="width: 8rem">
+    <button class="btn btn-sm btn-outline-primary">Filtruj</button>
+    {% if dzien or szukaj %}
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('postep.raporty') }}">×</a>
+    {% endif %}
+  </form>
+</div>
+{% endblock %}
+
+{% block tresc %}
+<div class="row g-3">
+  <div class="col-xl-8">
+    <div class="kafelek p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover tabela-gesta mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Data</th><th>Kto</th><th>Odcinek</th><th>Co zrobiono</th>
+              <th class="text-end">Metry</th><th class="text-end">Ludzi</th>
+              <th>Przestój</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for r in raporty %}
+            <tr {% if r.byl_przestoj %}class="table-warning"{% endif %}>
+              <td class="small">{{ r.data_raportu.strftime("%Y-%m-%d") if r.data_raportu }}</td>
+              <td class="small">
+                {{ r.autor.login if r.autor else "—" }}
+                {% if r.brygada %}<div class="text-body-secondary">{{ r.brygada }}</div>{% endif %}
+              </td>
+              <td class="small fw-semibold">
+                {% if r.segment or r.obiekt %}
+                  <a href="{{ url_for('szukaj.szukaj', q=r.czego_dotyczy.split('-')[0]) }}">
+                    {{ r.czego_dotyczy }}</a>
+                {% else %}—{% endif %}
+              </td>
+              <td class="small">
+                {{ r.opis }}
+                {% if r.sprzet or r.pogoda %}
+                  <div class="text-body-secondary">
+                    {{ r.sprzet or "" }}{% if r.sprzet and r.pogoda %} · {% endif %}{{ r.pogoda or "" }}
+                  </div>
+                {% endif %}
+              </td>
+              <td class="liczba fw-semibold">
+                {% if r.metry is not none %}{{ r.metry | liczba(1) }}{% else %}—{% endif %}
+              </td>
+              <td class="liczba">{{ r.ludzi if r.ludzi is not none else "—" }}</td>
+              <td class="small">
+                {% if r.byl_przestoj %}
+                  <span class="badge text-bg-warning">{{ r.przestoj_godziny | liczba(1) }} h</span>
+                  <div class="text-body-secondary">{{ r.przestoj_powod or "" }}</div>
+                {% else %}—{% endif %}
+              </td>
+              <td>
+                {% if r.autor_id == current_user.id or current_user.jest_adminem %}
+                  <form method="post" action="{{ url_for('postep.usun_raport', raport_id=r.id) }}">
+                    <button class="btn btn-sm btn-link p-0 text-danger" title="Usuń">
+                      <i class="bi bi-x-lg"></i>
+                    </button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="8" class="text-body-secondary p-3">
+                Brak raportów{% if dzien or szukaj %} dla tego filtra{% endif %}.
+                Pierwszy wpis dodaj obok.
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-4">
+    {# --- podsumowanie tygodnia --- #}
+    <div class="kafelek p-3 mb-3">
+      <h2 class="h6 text-uppercase text-body-secondary mb-2">
+        Ostatnie 7 dni <span class="fw-normal text-lowercase">(od {{ tydzien.od_dnia }})</span>
+      </h2>
+      <div class="row g-2 text-center">
+        <div class="col-6">
+          <div class="border rounded p-2">
+            <div class="h4 mb-0">{{ tydzien.metry | liczba(1) }}</div>
+            <div class="small text-body-secondary">metrów ułożonych</div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="border rounded p-2">
+            <div class="h4 mb-0">{{ tydzien.dniowki }}</div>
+            <div class="small text-body-secondary">dniówek</div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="border rounded p-2">
+            <div class="h4 mb-0">{{ tydzien.wpisow }}</div>
+            <div class="small text-body-secondary">wpisów</div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="border rounded p-2 {% if tydzien.przestoje_h %}border-warning{% endif %}">
+            <div class="h4 mb-0">{{ tydzien.przestoje_h | liczba(1) }}</div>
+            <div class="small text-body-secondary">
+              godzin przestoju
+              {% if tydzien.z_przestojem %}({{ tydzien.z_przestojem }} dni){% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# --- formularz --- #}
+    <div class="kafelek p-3">
+      <h2 class="h6 text-uppercase text-body-secondary mb-3">Nowy raport</h2>
+      <form method="post" action="{{ url_for('postep.dodaj_raport') }}">
+        <div class="row g-2 mb-2">
+          <div class="col-7">
+            <label class="form-label small mb-0">Data</label>
+            <input type="date" class="form-control form-control-sm" name="data" value="{{ dzisiaj }}">
+          </div>
+          <div class="col-5">
+            <label class="form-label small mb-0">Brygada</label>
+            <input class="form-control form-control-sm" name="brygada" placeholder="np. B2">
+          </div>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label small mb-0">Odcinek</label>
+          <input class="form-control form-control-sm" name="dotyczy"
+                 placeholder="Wyl101-D155 albo D155">
+          <div class="form-text small">Puste = praca nieprzypisana (dowóz, zaplecze).</div>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label small mb-0">Co zrobiono <span class="text-danger">*</span></label>
+          <textarea class="form-control form-control-sm" name="opis" rows="2" required
+                    placeholder="np. ułożono 18 m Ø500, zasypka do połowy"></textarea>
+        </div>
+
+        <div class="row g-2 mb-2">
+          <div class="col-4">
+            <label class="form-label small mb-0">Metry</label>
+            <input class="form-control form-control-sm" name="metry" inputmode="decimal">
+          </div>
+          <div class="col-3">
+            <label class="form-label small mb-0">Ludzi</label>
+            <input class="form-control form-control-sm" name="ludzi" inputmode="numeric">
+          </div>
+          <div class="col-5">
+            <label class="form-label small mb-0">Pogoda</label>
+            <input class="form-control form-control-sm" name="pogoda" placeholder="deszcz, 8°C">
+          </div>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label small mb-0">Sprzęt</label>
+          <input class="form-control form-control-sm" name="sprzet"
+                 placeholder="koparka 15t, zagęszczarka">
+        </div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-4">
+            <label class="form-label small mb-0">Przestój [h]</label>
+            <input class="form-control form-control-sm" name="przestoj_godziny" inputmode="decimal">
+          </div>
+          <div class="col-8">
+            <label class="form-label small mb-0">Powód przestoju</label>
+            <input class="form-control form-control-sm" name="przestoj_powod"
+                   placeholder="np. brak rur Ø500 na budowie">
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small mb-0">Przy okazji ustaw stan odcinka</label>
+          <select class="form-select form-select-sm" name="stan">
+            <option value="">bez zmiany</option>
+            {% for s in stany %}
+              {% if s.name != "PROJEKT" %}
+                {% if s.name != "ODEBRANY" or current_user.moze_odbierac %}
+                  <option value="{{ s.name }}">{{ etykiety[s] }}</option>
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+
+        <button class="btn btn-primary btn-sm w-100">
+          <i class="bi bi-plus-lg"></i> Zapisz raport
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

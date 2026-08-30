@@ -18,7 +18,7 @@ from pathlib import Path
 
 import fitz
 from flask import Blueprint, abort, current_app, jsonify, render_template, request, send_file
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import aliased, selectinload
 
 from app.extensions import db
@@ -552,3 +552,91 @@ def plik_swiata_strony(nr: int):
         BytesIO(tresc.encode("ascii")), mimetype="text/plain", as_attachment=True,
         download_name=f"plan-strona-{nr:02d}.pgw",
     )
+
+
+# =====================================================================
+#  Warstwa postepu robot
+# =====================================================================
+
+@mapa_bp.get("/api/mapa/postep/<int:nr>")
+def postep_strony(nr: int):
+    """Odcinki wraz ze stanem robot, gotowe do narysowania na arkuszu.
+
+    Odcinek rysuje sie jako linie miedzy wskazanymi pozycjami obu koncow.
+    Pozycje wskazuje sie recznie, wiec **wiekszosci odcinkow narysowac sie nie
+    da** - i to trzeba powiedziec wprost, a nie pokazac piec z czterdziestu
+    i zamilknac. Stad `nie_do_narysowania`: lista z podanym powodem.
+    """
+    from app.models import ETYKIETY, KOLORY, StatusWykonania
+
+    strona = db.session.scalar(select(PlanSheet).where(PlanSheet.nr_strony == nr))
+    if strona is None:
+        return jsonify({"blad": f"Nie ma strony {nr}."}), 404
+
+    pozycje = {
+        lok.obiekt_id: lok for lok in db.session.scalars(
+            select(PlanLocation).where(PlanLocation.strona_id == strona.id)
+        )
+    }
+    # Ksztalt odpowiedzi jest zawsze ten sam, takze gdy nie ma czego rysowac -
+    # przegladarka nie musi sprawdzac, ktore pola dostala.
+    legenda = [
+        {"stan": s.name, "etykieta": ETYKIETY[s], "kolor": KOLORY[s]}
+        for s in StatusWykonania
+    ]
+    if not pozycje:
+        return jsonify({
+            "odcinki": [], "polowiczne": [], "nie_do_narysowania": [],
+            "legenda": legenda,
+            "powod": "Na tym arkuszu nie wskazano jeszcze żadnej pozycji.",
+        })
+
+    tylko_w_toku = request.args.get("wszystkie") != "1"
+    q = (
+        select(Segment)
+        .where(or_(Segment.obiekt_od_id.in_(pozycje), Segment.obiekt_do_id.in_(pozycje)))
+        .options(selectinload(Segment.obiekt_od), selectinload(Segment.obiekt_do))
+    )
+    if tylko_w_toku:
+        q = q.where(Segment.status != StatusWykonania.PROJEKT)
+
+    odcinki, polowiczne, brakujace = [], [], []
+    for odc in db.session.scalars(q):
+        stan = odc.status or StatusWykonania.PROJEKT
+        wspolne = {
+            "nazwa": odc.nazwa,
+            "od": odc.obiekt_od.kod, "do": odc.obiekt_do.kod,
+            "stan": stan.name, "etykieta": ETYKIETY[stan], "kolor": KOLORY[stan],
+            "dlugosc_m": float(odc.dlugosc_m) if odc.dlugosc_m is not None else None,
+            "dn_mm": odc.dn_mm,
+            "spadek_promile": (
+                float(odc.spadek_promile) if odc.spadek_promile is not None else None),
+            "podejrzany": bool(odc.podejrzany),
+        }
+
+        poczatek = pozycje.get(odc.obiekt_od_id)
+        koniec = pozycje.get(odc.obiekt_do_id)
+
+        if poczatek is not None and koniec is not None:
+            odcinki.append({
+                **wspolne,
+                "punkty": [[float(poczatek.x_pt), float(poczatek.y_pt)],
+                           [float(koniec.x_pt), float(koniec.y_pt)]],
+            })
+        else:
+            # Jeden koniec znany - lepiej postawic znacznik niz zgubic odcinek.
+            znany = poczatek or koniec
+            polowiczne.append({
+                **wspolne,
+                "punkt": [float(znany.x_pt), float(znany.y_pt)],
+                "brakuje": odc.obiekt_do.kod if poczatek is not None else odc.obiekt_od.kod,
+            })
+            brakujace.append(wspolne["nazwa"])
+
+    return jsonify({
+        "odcinki": odcinki,
+        "polowiczne": polowiczne,
+        "nie_do_narysowania": brakujace,
+        "legenda": legenda,
+        "powod": None,
+    })

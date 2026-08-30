@@ -136,6 +136,21 @@
         </label>
       </div>
       <div class="form-check form-switch small">
+        <input class="form-check-input" type="checkbox" id="w-postep">
+        <label class="form-check-label" for="w-postep">
+          Postęp robót <span class="badge text-bg-info" id="licznik-postep">0</span>
+        </label>
+      </div>
+      <div class="form-check form-switch small ms-4" id="opcja-wszystkie" hidden>
+        <input class="form-check-input" type="checkbox" id="w-postep-wszystkie">
+        <label class="form-check-label" for="w-postep-wszystkie">
+          pokaż też odcinki w projekcie
+        </label>
+      </div>
+      <div id="legenda-postepu" class="small mt-1 ms-4" hidden></div>
+      <div id="uwaga-postepu" class="small text-body-secondary mt-1 ms-4"></div>
+
+      <div class="form-check form-switch small mt-2">
         <input class="form-check-input" type="checkbox" id="w-repery">
         <label class="form-check-label" for="w-repery">
           Repery z osnowy <span class="badge text-bg-success" id="licznik-repery">0</span>
@@ -229,6 +244,7 @@ $(function () {
   });
 
   var warstwy = {
+    postep: L.layerGroup(),
     obiekty: L.layerGroup(),
     kotwice: L.layerGroup(),
     siec: L.layerGroup(),
@@ -314,6 +330,7 @@ $(function () {
     wczytajSiec();
     przelaczWarstwe("siec", false);
     przelaczWarstwe("repery", false);
+    przelaczWarstwe("postep", false);
   });
 
   // ---------------------------------------------------------- rysowanie
@@ -402,6 +419,71 @@ $(function () {
     });
   }
 
+  // Warstwa postepu robot. Odcinek to linia miedzy wskazanymi pozycjami obu
+  // koncow - a poniewaz pozycje wskazuje sie recznie, wiekszosci odcinkow
+  // narysowac sie nie da. Licznik mowi o tym wprost.
+  function wczytajPostep() {
+    var wszystkie = $("#w-postep-wszystkie").is(":checked") ? "?wszystkie=1" : "";
+    $.getJSON("/api/mapa/postep/" + nrStrony + wszystkie, function (dane) {
+      warstwy.postep.clearLayers();
+
+      if (dane.powod) {
+        $("#licznik-postep").text("—");
+        $("#uwaga-postepu").text(dane.powod);
+        return;
+      }
+
+      dane.odcinki.forEach(function (o) {
+        var gruby = o.stan === "ODEBRANY";
+        L.polyline(o.punkty.map(function (p) { return pdfNaMape(p[0], p[1]); }),
+                   { color: o.kolor, weight: gruby ? 6 : 4, opacity: .9 })
+          .bindPopup(dymekOdcinka(o))
+          .addTo(warstwy.postep);
+      });
+
+      // Odcinek z jednym wskazanym koncem: znacznik zamiast zniknięcia z mapy.
+      dane.polowiczne.forEach(function (o) {
+        L.circleMarker(pdfNaMape(o.punkt[0], o.punkt[1]),
+                       { radius: 7, color: o.kolor, fillColor: o.kolor,
+                         fillOpacity: .55, weight: 2, dashArray: "3 3" })
+          .bindPopup(dymekOdcinka(o) +
+            '<br><span class="text-danger">Nie wskazano pozycji obiektu ' +
+            o.brakuje + " — dlatego rysuję tylko punkt.</span>")
+          .addTo(warstwy.postep);
+      });
+
+      $("#licznik-postep").text(dane.odcinki.length);
+      $("#opcja-wszystkie").prop("hidden", false);
+      $("#legenda-postepu").prop("hidden", false).html(
+        dane.legenda.map(function (l) {
+          return '<span class="me-2 text-nowrap"><span style="display:inline-block;' +
+            "width:.8rem;height:.5rem;background:" + l.kolor +
+            ';border-radius:2px"></span> ' + l.etykieta + "</span>";
+        }).join(""));
+
+      var brak = dane.nie_do_narysowania.length;
+      $("#uwaga-postepu").html(
+        brak
+          ? "Narysowano <strong>" + dane.odcinki.length + "</strong> odcinków. " +
+            "Kolejnych <strong>" + brak + "</strong> nie da się narysować — " +
+            "brakuje wskazanej pozycji drugiego końca. Wskaż ją w trybie " +
+            "<em>Wskaż obiekt</em>."
+          : "Wszystkie odcinki tego arkusza mają wskazane oba końce.");
+    });
+  }
+
+  function dymekOdcinka(o) {
+    var wiersze = ["<strong>" + o.nazwa + "</strong>",
+                   '<span class="badge" style="background:' + o.kolor + '">' +
+                   o.etykieta + "</span>"];
+    if (o.dlugosc_m !== null) wiersze.push(window.pl(o.dlugosc_m, 2) + " m");
+    if (o.dn_mm) wiersze.push("Ø" + o.dn_mm);
+    if (o.spadek_promile !== null) wiersze.push(window.pl(o.spadek_promile, 1) + "‰");
+    if (o.podejrzany) wiersze.push('<span class="text-danger">dane niepewne</span>');
+    return wiersze.join("<br>") +
+      '<br><a href="/szukaj?q=' + encodeURIComponent(o.od) + '">karta odcinka</a>';
+  }
+
   function wczytajRepery() {
     $.getJSON("/api/mapa/repery/" + nrStrony, function (dane) {
       warstwy.repery.clearLayers();
@@ -434,15 +516,22 @@ $(function () {
     $("#w-" + nazwa).prop("checked", wlaczona);
     if (wlaczona) { mapa.addLayer(warstwy[nazwa]); } else { mapa.removeLayer(warstwy[nazwa]); }
   }
-  $("#w-obiekty, #w-siec, #w-km, #w-repery").on("change", function () {
+  $("#w-obiekty, #w-siec, #w-km, #w-repery, #w-postep").on("change", function () {
     var nazwa = this.id.slice(2);
     if (this.checked) {
       mapa.addLayer(warstwy[nazwa]);
       if (nazwa === "repery" && !warstwy.repery.getLayers().length) wczytajRepery();
+      if (nazwa === "postep") wczytajPostep();
     } else {
       mapa.removeLayer(warstwy[nazwa]);
+      if (nazwa === "postep") {
+        $("#legenda-postepu").prop("hidden", true);
+        $("#opcja-wszystkie").prop("hidden", true);
+        $("#uwaga-postepu").text("");
+      }
     }
   });
+  $("#w-postep-wszystkie").on("change", wczytajPostep);
 
   // ------------------------------------------------------- klikniecia
   mapa.on("mousemove", function (e) {

@@ -31,6 +31,19 @@ KOLUMNY: list[tuple[str, str, str]] = [
 INDEKSY: list[tuple[str, str]] = [
     ("ix_segment_podejrzany", "CREATE INDEX IF NOT EXISTS ix_segment_podejrzany "
                               "ON segment (podejrzany)"),
+    ("ix_segment_status", "CREATE INDEX IF NOT EXISTS ix_segment_status "
+                          "ON segment (status)"),
+]
+
+# Nowe wartosci w istniejacych typach wyliczeniowych. `create_all` tworzy typ
+# raz i nigdy go nie rusza, wiec dopisanie roli w Pythonie nie dolozy jej
+# w bazie - przy pierwszym zapisie wyszedlby blad "invalid input value for enum".
+#
+# UWAGA: `ALTER TYPE ... ADD VALUE` jest **nieodwracalny** - Postgres nie ma
+# `DROP VALUE`. Literowka oznacza przebudowe typu, wiec kazda pozycja tej listy
+# powinna byc przeczytana dwa razy.
+WARTOSCI_ENUM: list[tuple[str, str]] = [
+    ("rola", "MONTER"),
 ]
 
 # Naturalny klucz polaczenia. `opis` przycinamy do 120 znakow, bo indeks btree
@@ -65,9 +78,42 @@ def _tabela_istnieje(nazwa: str) -> bool:
     return bool(db.session.scalar(text("SELECT to_regclass(:n)"), {"n": nazwa}))
 
 
-def dostosuj_schemat() -> list[str]:
-    """Dolóż brakujace kolumny i indeksy. Zwraca liste wykonanych zmian."""
+def _typ_istnieje(nazwa: str) -> bool:
+    return bool(db.session.scalar(
+        text("SELECT 1 FROM pg_type WHERE typname = :n"), {"n": nazwa}))
+
+
+def _ma_wartosc(typ: str, wartosc: str) -> bool:
+    return bool(db.session.scalar(
+        text("SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid "
+             "WHERE t.typname = :t AND e.enumlabel = :w"),
+        {"t": typ, "w": wartosc},
+    ))
+
+
+def _dopisz_wartosci_enum() -> list[str]:
+    """Dopisz brakujace wartosci do istniejacych typow wyliczeniowych.
+
+    `ALTER TYPE ... ADD VALUE` nie da sie wykonac wewnatrz transakcji, ktora
+    tego typu potem uzywa, wiec kazda zmiana idzie osobnym polaczeniem
+    z autocommitem.
+    """
     wykonane: list[str] = []
+    for typ, wartosc in WARTOSCI_ENUM:
+        if not _typ_istnieje(typ) or _ma_wartosc(typ, wartosc):
+            continue
+        with db.engine.connect().execution_options(isolation_level="AUTOCOMMIT") as pol:
+            pol.execute(text(f"ALTER TYPE {typ} ADD VALUE IF NOT EXISTS '{wartosc}'"))
+        wykonane.append(f"{typ} += {wartosc}")
+    return wykonane
+
+
+def dostosuj_schemat() -> list[str]:
+    """Dolóż brakujace kolumny, indeksy i wartosci enumow.
+
+    Zwraca liste wykonanych zmian.
+    """
+    wykonane: list[str] = _dopisz_wartosci_enum()
 
     for tabela, kolumna, typ in KOLUMNY:
         if not _tabela_istnieje(tabela):

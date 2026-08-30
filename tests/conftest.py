@@ -8,9 +8,14 @@ cala sesje testowa, obiekt `g` bylby wspolny dla wszystkich zadan - a Flask-Logi
 trzyma w `g._login_user` cache zalogowanej osoby. Efekt: klient "anonimowy"
 dziedziczylby sesje po tescie, ktory sie zalogowal.
 
-Dlatego kontekst jest **na kazdy test osobny**, a klient anonimowy dodatkowo
-czysci ten cache przed kazdym zadaniem. W normalnej pracy problem nie wystepuje,
-bo tam kazde zadanie HTTP dostaje swiezy kontekst.
+Dlatego kontekst jest **na kazdy test osobny**, a kazdy klient czysci ten cache
+przed kazdym zadaniem. W normalnej pracy problem nie wystepuje, bo tam kazde
+zadanie HTTP dostaje swiezy kontekst.
+
+Czyszczenie dotyczy **wszystkich** klientow, nie tylko anonimowego. Test, ktory
+uzywa dwoch roznych zalogowanych kont naraz (np. kierownik i monter), inaczej
+wykonalby oba zadania jako ta osoba, ktora zalogowala sie pierwsza - i cicho
+przepuscilby blad w uprawnieniach.
 """
 import os
 
@@ -27,8 +32,12 @@ LOGIN_TESTOWY = "pytest-admin"
 HASLO_TESTOWE = "pytest-haslo-testowe"
 
 
-class KlientBezSesji(FlaskClient):
-    """Klient, ktory przed kazdym zadaniem zapomina o zalogowanej osobie."""
+class KlientZeSwiezymKontekstem(FlaskClient):
+    """Klient, ktory przed kazdym zadaniem zapomina, kto byl zalogowany.
+
+    Osoba zostaje wczytana na nowo z ciasteczka sesji tego klienta - dokladnie
+    tak, jak dzieje sie przy prawdziwym zadaniu HTTP.
+    """
 
     def open(self, *args, **kwargs):
         g.pop("_login_user", None)
@@ -38,6 +47,7 @@ class KlientBezSesji(FlaskClient):
 @pytest.fixture(scope="session")
 def app():
     aplikacja = create_app()
+    aplikacja.test_client_class = KlientZeSwiezymKontekstem
     yield aplikacja
     _usun_konto_testowe(aplikacja)
 
@@ -104,11 +114,7 @@ def klient(app, konto_testowe):
 @pytest.fixture()
 def klient_anonim(app, konto_testowe):
     """Klient bez sesji - do sprawdzania, czy ochrona faktycznie dziala."""
-    app.test_client_class = KlientBezSesji
-    try:
-        return app.test_client()
-    finally:
-        app.test_client_class = None
+    return app.test_client()
 
 
 @pytest.fixture()

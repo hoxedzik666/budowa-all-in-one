@@ -64,6 +64,7 @@ i bez bazy — i te testy biegną w ułamku sekundy.
 | `material.py` | `MaterialItem` — arkusz RURY; zawiera `rozbierz_opis()`, która wyciąga z nazwy pozycji średnicę, długość sztuki i klasę SN |
 | `plan.py` | `PlanSheet`, `PlanLocation` — arkusze planów i pozycje obiektów; `PlanGeoref`, `PlanAnchor` — związanie arkusza z układem PL-2000/5; `punkty_na_metry()` przelicza odległość na rysunku na metry |
 | `wykonanie.py` | `PomiarWykonawczy` — rzędne zmierzone w wykopie. **Osobno od projektu**: pomiar nigdy go nie nadpisuje |
+| `postep.py` | `ZmianaStatusu`, `RaportDzienny` — postęp robót; tu też reguły ścieżki stanów i uprawnień do odbioru (`wolno_ustawic`) |
 | `audit.py` | `ImportRun` — historia importów wraz z pełną listą rozbieżności |
 | `user.py` | `User`, `Rola` — konta i uprawnienia; hasła wyłącznie jako skrót |
 | `task.py` | `Task`, `StatusZadania`, `Priorytet` — zadania globalne i przypisane |
@@ -173,6 +174,7 @@ Dlaczego nie wyszło: [`04-ocr-planow.md`](04-ocr-planow.md).
 | `api.py` | API JSON dla danych sieci |
 | `auth.py` | logowanie i wylogowanie; lista endpointów jawnych |
 | `wykonanie.py` | dziennik wykonawczy: pomiary, odchyłki, rzeczywisty spadek |
+| `postep.py` | stan odcinków (`/postep`) i raporty dzienne (`/raporty`) |
 | `pwa.py` | praca offline (service worker, `/offline`) i kody QR na studnie |
 | `panel.py` | zarządzanie kontami (tylko rola ADMIN) |
 | `zadania.py` | zadania globalne i przypisane, licznik do nawigacji |
@@ -189,6 +191,7 @@ partials/
                            + materiały + rury + wykonanie + mapka)
   warianty_rur.html        tabela trzech wariantów pocięcia rur
   przelacznik_motywu.html  menu wyboru motywu
+  przyciski_stanu.html     przyciski przesuwające odcinek po ścieżce robót
 pages/
   pulpit.html              strona główna z podglądem planu
   szukaj.html              wyszukiwarka — główny widok roboczy
@@ -197,6 +200,8 @@ pages/
   spadek_ciagu.html        tyczenie całego ciągu rur
   mapa.html                Leaflet: kafelki, warstwy, skala, kotwice georeferencji
   wykonanie.html           dziennik wykonawczy (as-built)
+  postep.html              stan odcinków i pasek postępu całej sieci
+  raporty.html             raporty dzienne brygady
   karta_druk.html          karta odcinka na jedną kartkę A4
   qr.html                  arkusz kodów QR do wydruku
   offline.html             ekran przy braku zasięgu
@@ -237,7 +242,7 @@ nawigację i rozwijane sekcje niewidocznymi. Pilnuje tego `tests/test_ui_regresj
 | `data/exports/mapy`, `kafelki`, `wycinki` | cache obrazów. Można kasować — odtworzy się |
 | `data/exports/siec` | wynik konwertera planów. Kasowanie wymaga ponownego `flask konwertuj-plany` (~2 min) |
 | `scripts/` | pomocnicze skrypty jednorazowe, uruchamiane ręcznie w kontenerze |
-| `tests/` | testy: 213 sztuk |
+| `tests/` | testy: 251 sztuk |
 | `migrations/` | katalog Flask-Migrate (Alembic) |
 
 ---
@@ -296,9 +301,13 @@ tests/test_wycinek_pdf.py      wycinek oryginału: legenda, przycięcie, cache
 tests/test_plan_wektor.py      konwerter planów, eksporty, kafelki
 tests/test_georef.py           przekształcenie Helmerta, kontrola dopasowania
 tests/test_wykonanie.py        dziennik as-built, offline, kody QR
+tests/test_postep.py           uprawnienia ról, ścieżka stanów, raporty dzienne
 tests/conftest.py              fixture — w tym pułapka z kontekstem aplikacji
 ```
 
 `conftest.py` zawiera opis niuansu, który potrafi zjeść godzinę: Flask nie tworzy
 nowego kontekstu aplikacji, gdy jakiś jest już aktywny, więc trzymanie jednego
 kontekstu na całą sesję testową powoduje wyciekanie `g._login_user` między testami.
+Dlatego **każdy** klient testowy czyści ten cache przed żądaniem — inaczej test
+używający dwóch kont naraz (kierownik i monter) wykonałby oba żądania jako osobę,
+która zalogowała się pierwsza, i cicho przepuścił błąd w uprawnieniach.

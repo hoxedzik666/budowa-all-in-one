@@ -11,11 +11,11 @@ from datetime import date
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user
 from sqlalchemy import func, select
-from sqlalchemy.orm import aliased, selectinload
+from sqlalchemy.orm import selectinload
 
 from app.extensions import db
+from app.services.powiazania import powiaz as _powiaz
 from app.models import (
-    NetworkObject,
     PomiarWykonawczy,
     RodzajPomiaru,
     Segment,
@@ -25,36 +25,6 @@ from app.models import (
 wykonanie_bp = Blueprint("wykonanie", __name__)
 
 LIMIT_LISTY = 300
-
-
-def _powiaz(fraza: str) -> tuple[NetworkObject | None, Segment | None, str | None]:
-    """Zamien wpis `D155` albo `Wyl101-D155` na obiekt albo odcinek.
-
-    Ta sama zasada, co w zadaniach - brygadzista pisze to, co ma na rysunku,
-    a nie identyfikator z bazy.
-    """
-    fraza = (fraza or "").strip()
-    if not fraza:
-        return None, None, "Podaj obiekt (np. D155) albo odcinek (np. Wyl101-D155)."
-
-    if "-" in fraza:
-        od, _, do_ = fraza.partition("-")
-        a, b = aliased(NetworkObject), aliased(NetworkObject)
-        odcinek = db.session.scalar(
-            select(Segment).join(a, Segment.obiekt_od_id == a.id)
-            .join(b, Segment.obiekt_do_id == b.id)
-            .where(func.lower(a.kod) == od.strip().lower(),
-                   func.lower(b.kod) == do_.strip().lower())
-        )
-        if odcinek is not None:
-            return odcinek.obiekt_od, odcinek, None
-
-    obiekt = db.session.scalar(
-        select(NetworkObject).where(func.lower(NetworkObject.kod) == fraza.lower())
-    )
-    if obiekt is not None:
-        return obiekt, None, None
-    return None, None, f"Nie znam obiektu ani odcinka „{fraza}”."
 
 
 def pomiary_odcinka(odcinek: Segment) -> list[PomiarWykonawczy]:

@@ -49,6 +49,7 @@ def create_app(config_object=None) -> Flask:
     from app.blueprints.mapa import mapa_bp
     from app.blueprints.niwelator import niwelator_bp
     from app.blueprints.panel import panel_bp
+    from app.blueprints.postep import postep_bp
     from app.blueprints.pwa import pwa_bp
     from app.blueprints.szukaj import szukaj_bp
     from app.blueprints.wykonanie import wykonanie_bp
@@ -64,6 +65,7 @@ def create_app(config_object=None) -> Flask:
     app.register_blueprint(zadania_bp)
     app.register_blueprint(wykonanie_bp)
     app.register_blueprint(pwa_bp)
+    app.register_blueprint(postep_bp)
 
     @app.before_request
     def wymagaj_logowania():
@@ -79,6 +81,24 @@ def create_app(config_object=None) -> Flask:
     from app.cli import register_cli
 
     register_cli(app)
+
+    # Slowniki stanow rejestrujemy jako globalne Jinjy, a nie przez
+    # context_processor: makra (np. karta odcinka) nie widza kontekstu
+    # szablonu, ktory je wywolal, ale globalne widza zawsze.
+    from app.models import ETYKIETY as _etykiety_stanu
+    from app.models import KLASY_PLAKIETKI as _klasy_stanu
+    from app.models import SCIEZKA as _sciezka_robot
+
+    # `current_user` z Flask-Login jest zwyklym context processorem, wiec makro
+    # (importowane bez kontekstu) go nie widzi - a karta odcinka pyta o
+    # uprawnienia. LocalProxy rozwiazuje sie przy odczycie, wiec ten sam obiekt
+    # dziala jako globalna Jinjy.
+    app.jinja_env.globals.update(
+        current_user=current_user,
+        stany_robot=list(_sciezka_robot),
+        etykiety_stanu=_etykiety_stanu,
+        klasy_stanu=_klasy_stanu,
+    )
 
     @app.template_filter("liczba")
     def _liczba(value, miejsca: int = 2):

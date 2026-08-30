@@ -238,6 +238,36 @@ Konwersja rusza **wyłącznie na żądanie**; wynik trafia do cache.
 
 ---
 
+## Postęp robót i raporty dzienne
+
+| Endpoint | Do czego |
+|---|---|
+| `GET /postep?stan=&szukaj=` | przegląd stanów odcinków |
+| `POST /postep/<id>/stan` | zmiana stanu (`stan=WYTYCZONY` … `ODEBRANY`) |
+| `GET /api/postep/odcinek/<od>/<do>` | stan, następny krok, historia, ostrzeżenia |
+| `GET /api/mapa/postep/<nr>?wszystkie=1` | warstwa postępu na arkuszu |
+| `GET /raporty?dzien=&szukaj=` | raporty dzienne |
+| `POST /raporty/dodaj` · `POST /raporty/<id>/usun` | operacje na raportach |
+| `GET /api/raporty` | raporty widoczne dla zalogowanego + podsumowanie tygodnia |
+
+```json
+{"odcinek": "Wyl101-D155", "stan": "WYKONANY", "etykieta": "wykonany",
+ "nastepny": {"stan": "ODEBRANY", "etykieta": "odebrany", "wolno": false,
+              "powod": "Odbiór odcinka należy do kierownika budowy…"},
+ "ostrzezenia": ["2 z 3 pomiarów jest poza tolerancją, największa odchyłka 0.045 m."],
+ "historia": [{"poprzedni": "W_TRAKCIE", "nowy": "WYKONANY", "autor": "monter1"}]}
+```
+
+Pole `wolno` mówi wprost, czy zalogowana osoba może wykonać dany krok —
+interfejs nie musi powielać reguł uprawnień. **Reguła i tak jest sprawdzana
+po stronie serwera.**
+
+Warstwa postępu zwraca `odcinki` (do narysowania), `polowiczne` (jeden koniec
+wskazany) oraz `nie_do_narysowania` — bo pokazanie części odcinków bez powiedzenia
+o reszcie wprowadzałoby w błąd.
+
+---
+
 ## Praca offline i kody QR
 
 | Endpoint | Do czego |
@@ -333,6 +363,8 @@ a nie ekran logowania, którego i tak nie da się wysłać.
 | `/zadania` | zadania globalne i przypisane |
 | `/panel/uzytkownicy` | konta (tylko ADMIN) |
 | `/wykonanie` | **dziennik wykonawczy — rzędne z wykopu** |
+| `/postep` | stan odcinków i postęp całej sieci |
+| `/raporty` | raporty dzienne brygady |
 | `/qr` | arkusz kodów QR na studnie |
 | `/odcinek/<od>/<do>/karta` | karta odcinka do druku (A4) |
 | `/osnowa`, `/materialy`, `/importy` | osnowa, materiały, historia importów |

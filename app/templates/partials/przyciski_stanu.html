@@ -1,0 +1,40 @@
+{# Przyciski przesuwajace odcinek po sciezce robot.
+   Wymaga zmiennych: `o` (odcinek) oraz `stan`, `etykiety`, `stany`.
+   Przycisk odbioru pokazuje sie wylacznie kierownictwu - brygadzista nie ma
+   go widziec i klikac po to, zeby dostac odmowe. #}
+{% set kolejnosc = stany %}
+{% set poz = kolejnosc.index(stan) %}
+{% set nastepny = kolejnosc[poz + 1] if poz + 1 < kolejnosc | length else none %}
+{% set wstecz = kolejnosc[poz - 1] if poz > 0 else none %}
+
+<div class="d-flex gap-1">
+  {% if nastepny %}
+    {% set to_odbior = nastepny.name == "ODEBRANY" %}
+    {% if not to_odbior or current_user.moze_odbierac %}
+      <form method="post" action="{{ url_for('postep.zmien_stan', segment_id=o.id) }}">
+        <input type="hidden" name="stan" value="{{ nastepny.name }}">
+        <button class="btn btn-sm py-0 {{ 'btn-success' if to_odbior else 'btn-outline-primary' }}">
+          {% if to_odbior %}<i class="bi bi-check2-all"></i>{% else %}<i class="bi bi-arrow-right"></i>{% endif %}
+          {{ etykiety[nastepny] }}
+        </button>
+      </form>
+    {% else %}
+      <span class="small text-body-secondary" title="Odbiór należy do kierownika budowy">
+        czeka na odbiór
+      </span>
+    {% endif %}
+  {% endif %}
+
+  {% if wstecz %}
+    {% set z_odbioru = stan.name == "ODEBRANY" %}
+    {% if not z_odbioru or current_user.moze_odbierac %}
+      <form method="post" action="{{ url_for('postep.zmien_stan', segment_id=o.id) }}">
+        <input type="hidden" name="stan" value="{{ wstecz.name }}">
+        <button class="btn btn-sm btn-outline-secondary py-0"
+                title="Cofnij do: {{ etykiety[wstecz] }}">
+          <i class="bi bi-arrow-counterclockwise"></i>
+        </button>
+      </form>
+    {% endif %}
+  {% endif %}
+</div>
