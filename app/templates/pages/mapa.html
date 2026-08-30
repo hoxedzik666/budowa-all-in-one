@@ -98,6 +98,10 @@
                   title="Zmieść cały arkusz">
             <i class="bi bi-arrows-angle-contract"></i>
           </button>
+          <button class="btn btn-sm btn-outline-success" id="gdzie-jestem" data-tylko-apk
+                  title="Pokaż moją pozycję z GPS">
+            <i class="bi bi-crosshair"></i> Gdzie jestem
+          </button>
         </div>
       </div>
 
@@ -244,6 +248,7 @@ $(function () {
   });
 
   var warstwy = {
+    gps: L.layerGroup(),
     postep: L.layerGroup(),
     obiekty: L.layerGroup(),
     kotwice: L.layerGroup(),
@@ -483,6 +488,79 @@ $(function () {
     return wiersze.join("<br>") +
       '<br><a href="/szukaj?q=' + encodeURIComponent(o.od) + '">karta odcinka</a>';
   }
+
+  /* Pozycja z telefonu na tym arkuszu.
+   *
+   * Caly lancuch jest po stronie serwera: GPS (WGS84) -> PL-2000/5 ->
+   * przeksztalcenie georeferencji -> punkt rysunku. Telefon podaje tylko
+   * dwie liczby i dokladnosc.
+   *
+   * Dokladnosc pokazujemy ZAWSZE, nie tylko przy bledzie. GPS w telefonie ma
+   * 3-10 m: to znajdzie studnie, ale nie wytyczy rury, i nikt nie moze o tym
+   * zapomniec, patrzac na ladny znacznik na mapie.
+   */
+  async function pokazGdzieJestem() {
+    var przycisk = $("#gdzie-jestem");
+    var stara = przycisk.html();
+    przycisk.prop("disabled", true)
+      .html('<span class="spinner-border spinner-border-sm"></span> Szukam…');
+
+    try {
+      var odczyt = await window.telefon.pozycja();
+      var dane = await $.getJSON("/api/mapa/z-gps/" + nrStrony, {
+        lat: odczyt.lat, lon: odczyt.lon, dokladnosc: odczyt.dokladnosc
+      });
+
+      warstwy.gps.clearLayers();
+      var srodek = pdfNaMape(dane.x_pt, dane.y_pt);
+
+      if (dane.promien_pt) {
+        /* Kolo dokladnosci rysujemy w jednostkach mapy, zeby zmienialo rozmiar
+         * przy przyblizaniu - tak jak rzeczywisty obszar niepewnosci. */
+        var brzeg = pdfNaMape(dane.x_pt + dane.promien_pt, dane.y_pt);
+        L.circle(srodek, {
+          radius: Math.abs(brzeg.lng - srodek.lng),
+          color: "#0dcaf0", fillColor: "#0dcaf0", fillOpacity: .15, weight: 1
+        }).addTo(warstwy.gps);
+      }
+
+      L.circleMarker(srodek, {
+        radius: 8, color: "#fff", weight: 3,
+        fillColor: "#0d6efd", fillOpacity: 1
+      }).bindPopup(
+        "<strong>Tu jesteś</strong><br>" +
+        (dane.dokladnosc_m ? "dokładność ok. " + window.pl(dane.dokladnosc_m, 0) + " m<br>" : "") +
+        "X " + window.pl(dane.x_gis, 2) + "<br>Y " + window.pl(dane.y_gis, 2) +
+        '<br><span class="text-body-secondary">' + dane.uklad + "</span>" +
+        '<br><span class="text-danger">Za mało dokładne do tyczenia.</span>'
+      ).addTo(warstwy.gps);
+
+      mapa.addLayer(warstwy.gps);
+      if (dane.na_arkuszu) {
+        mapa.panTo(srodek);
+      }
+
+      var uwagi = [];
+      if (!dane.na_arkuszu) uwagi.push("Jesteś poza tym arkuszem.");
+      if (dane.uwaga) uwagi.push(dane.uwaga);
+      $("#pozycja-kursora").html(
+        uwagi.length
+          ? '<span class="text-warning">' + uwagi.join(" ") + "</span>"
+          : "Twoja pozycja: X " + window.pl(dane.x_gis, 2) +
+            "  Y " + window.pl(dane.y_gis, 2) +
+            '  <span class="text-body-secondary">(± ' +
+            window.pl(dane.dokladnosc_m, 0) + " m)</span>");
+
+    } catch (wyjatek) {
+      var powod = (wyjatek.responseJSON && wyjatek.responseJSON.blad)
+        || wyjatek.message || "Nie udało się ustalić pozycji.";
+      $("#pozycja-kursora").html('<span class="text-danger">' + powod + "</span>");
+    } finally {
+      przycisk.prop("disabled", false).html(stara);
+    }
+  }
+
+  $("#gdzie-jestem").on("click", pokazGdzieJestem);
 
   function wczytajRepery() {
     $.getJSON("/api/mapa/repery/" + nrStrony, function (dane) {

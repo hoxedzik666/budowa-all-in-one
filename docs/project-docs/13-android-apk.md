@@ -1,7 +1,12 @@
 # Przeniesienie na Androida — analiza i plan
 
-> Stan: **analiza**. W etapie 5 nie powstał żaden kod pod APK — celowo.
-> Ten dokument ma dać podstawę do decyzji, zanim zacznie się praca.
+> Stan: **analiza wykonana, plan zrewidowany**. Aplikacja powstała w etapie 6 —
+> patrz [`15-aplikacja-android.md`](15-aplikacja-android.md).
+>
+> ⚠️ **Zalecana tu kolejność 1 → 3 okazała się niewykonalna.** TWA wymaga HTTPS
+> i Digital Asset Links pod publiczną domeną, a serwer stoi po HTTP w sieci
+> budowy. Poszedł więc **wariant 2 (Capacitor)**, który takiego wymogu nie ma.
+> TWA wraca do gry razem z HTTPS. Reszta tego dokumentu pozostaje aktualna.
 
 ---
 
@@ -97,6 +102,12 @@ Lokalna kopia danych roboczych, kolejka zmian, synchronizacja po powrocie zasię
 Wariant 1 daje APK w jeden dzień i **od razu weryfikuje założenie**, czy telefon
 jest w ogóle wygodnym narzędziem w wykopie — zanim włoży się w to trzy tygodnie.
 Capacitor jest bazą pod wariant 3, więc żaden krok się nie marnuje.
+
+**Czego to rozumowanie nie uwzględniało:** wariant 1 nie da się w ogóle
+zrealizować bez HTTPS. Sprawdzenie środowiska (brak certyfikatu, serwer pod
+`192.168.x.x`) przestawiło kolejność na **2 → 3**, a wariant 1 przesunęło za
+wdrożenie HTTPS. Capacitor i tak był bazą pod jedno i drugie, więc plan
+kosztował na tym zero.
 
 Kolejność ma znaczenie także z innego powodu: dopiero praca na budowie pokaże,
 czego naprawdę brakuje. Może się okazać, że aparat jest ważniejszy od pełnego

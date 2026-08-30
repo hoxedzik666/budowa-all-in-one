@@ -1,0 +1,4 @@
+# Skrypty powloki musza miec konce linii uniksowe, inaczej nie uruchomia sie
+# w kontenerze. Pliki powstaja na Windows, wiec git tego pilnuje.
+*.sh text eol=lf
+Dockerfile text eol=lf

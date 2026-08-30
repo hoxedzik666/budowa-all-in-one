@@ -39,6 +39,7 @@ from app.models.postep import (
 from app.models.survey import SurveyPoint
 from app.models.task import OTWARTE, Priorytet, StatusZadania, Task
 from app.models.user import Rola, User
+from app.models.zdjecie import Zdjecie
 from app.models.wykonanie import (
     TOLERANCJE_M,
     PomiarWykonawczy,
@@ -72,6 +73,7 @@ __all__ = [
     "SurveyPoint",
     "Task",
     "TypObiektu",
+    "Zdjecie",
     "ZmianaStatusu",
     "TypOdniesienia",
     "User",

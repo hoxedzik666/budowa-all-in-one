@@ -8,6 +8,10 @@ alembic==1.14.0
 python-dotenv==1.0.1
 gunicorn==23.0.0
 PyMuPDF==1.24.14
+# Przeliczenie WGS84 (GPS z telefonu) na PL-2000/5. W 02-technologie.md
+# stalo, ze pyproj dokladamy, "gdyby doszla transformacja miedzy ukladami" -
+# to jest ten moment. Transformacji geodezyjnych sie nie pisze recznie.
+pyproj==3.7.0
 pdfplumber==0.11.4
 openpyxl==3.1.5
 pytesseract==0.3.13

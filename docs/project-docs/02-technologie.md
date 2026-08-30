@@ -149,5 +149,8 @@ flask pokaz-odcinek Wyl101 D155
   CAD. Zależność nie zarobiłaby na siebie.
 - **`numpy`/`scipy`** — przekształcenie Helmerta ma cztery niewiadome i zamknięty
   wzór. Przy takiej skali przejrzystość jest cenniejsza niż ogólność.
-- **`pyproj`** — wszystko dzieje się w jednym układzie (PL-2000/5). Gdyby doszła
-  transformacja między układami, to byłby właściwy moment.
+- ~~**`pyproj`**~~ — **dodany w etapie 6.** Zapowiedź się spełniła: GPS
+  z telefonu podaje WGS84, a plany są w PL-2000/5, więc transformacja między
+  układami stała się konieczna. Odwzorowania Gaussa-Krügera nie pisze się
+  ręcznie — błąd w szóstym miejscu po przecinku daje kilkanaście metrów
+  w terenie i widać go dopiero przez porównanie z punktem kontrolnym.

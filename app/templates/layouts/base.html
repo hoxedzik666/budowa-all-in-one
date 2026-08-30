@@ -37,6 +37,15 @@
   </script>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/motywy.css') }}">
+  <style>
+    /* Przyciski korzystajace z aparatu i GPS-u maja sens tylko w aplikacji
+       na telefonie. W przegladarce znikaja, zamiast prowadzic donikad.
+       Atrybut data-apk ustawia telefon.js po wykryciu mostu Capacitora. */
+    [data-tylko-apk] { display: none !important; }
+    html[data-apk="1"] [data-tylko-apk] { display: inline-flex !important; }
+    html[data-apk="1"] .kafelek[data-tylko-apk],
+    html[data-apk="1"] div[data-tylko-apk] { display: block !important; }
+  </style>
 
   {# Miejsce na arkusze i style potrzebne tylko jednemu widokowi - np. Leaflet
      na /mapa. Nie ladujemy ich wszedzie, bo strona na budowie ma sie otwierac
@@ -101,6 +110,10 @@
         <input class="form-control form-control-sm me-2" type="search" name="q" id="pole-szukaj"
                autocomplete="off" placeholder="np. D155" aria-label="Szukaj" style="min-width: 9rem">
         <button class="btn btn-sm btn-outline-info" type="submit"><i class="bi bi-search"></i></button>
+        <button class="btn btn-sm btn-outline-light ms-1" type="button"
+                data-skanuj data-tylko-apk title="Zeskanuj kod QR ze studni">
+          <i class="bi bi-qr-code-scan"></i>
+        </button>
       </form>
 
       {% include "partials/przelacznik_motywu.html" %}
@@ -117,6 +130,8 @@
                 <i class="bi bi-people"></i> Użytkownicy</a></li>
             {% endif %}
             <li><hr class="dropdown-divider"></li>
+            <li><button class="dropdown-item" type="button" data-zmien-serwer data-tylko-apk>
+              <i class="bi bi-hdd-network"></i> Zmień adres serwera</button></li>
             <li><a class="dropdown-item" href="{{ url_for('auth.wyloguj') }}">
               <i class="bi bi-box-arrow-right"></i> Wyloguj</a></li>
           </ul>
@@ -150,6 +165,7 @@
 <script src="{{ url_for('static', filename='vendor/jquery/jquery-3.7.1.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script src="{{ url_for('static', filename='js/telefon.js') }}"></script>
 
 <script>
   // Praca bez zasiegu. Rejestracja jest cicha - gdy sie nie uda (stara

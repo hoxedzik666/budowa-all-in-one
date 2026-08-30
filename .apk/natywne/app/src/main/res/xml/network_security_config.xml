@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Zgoda na polaczenia bez szyfrowania.
+
+  Serwer stoi w sieci budowy pod adresem 192.168.x.x, bez domeny i bez
+  certyfikatu. Android od wersji 9 domyslnie blokuje HTTP, wiec bez tego pliku
+  aplikacja nie polaczylaby sie z niczym.
+
+  UWAGA: haslo do panelu leci wtedy otwartym tekstem po sieci lokalnej. To jest
+  swiadomy kompromis narzedzia dzialajacego w zamknietej sieci budowy - ale gdy
+  serwer dostanie HTTPS, ten plik nalezy skasowac razem z `usesCleartextTraffic`
+  w manifescie. Wtedy wchodzi tez w gre TWA (docs/project-docs/13).
+
+  `cleartextTrafficPermitted` zostawiamy dla calosci ruchu, a nie dla wybranych
+  adresow, bo adres serwera podaje uzytkownik i nie znamy go przy budowaniu.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

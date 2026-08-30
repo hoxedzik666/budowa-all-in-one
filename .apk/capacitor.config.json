@@ -1,0 +1,31 @@
+{
+  "appId": "pl.budowa.allinone",
+  "appName": "Budowa All-in-One",
+  "webDir": "web",
+  "android": {
+    "allowMixedContent": true
+  },
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true,
+    "allowNavigation": ["*"]
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": false
+    }
+  },
+  "_uwagi": [
+    "webDir 'web' to WYLACZNIE ekran konfiguracji adresu serwera. Wlasciwa",
+    "aplikacja jest serwowana przez Flaska i ladowana przez MainActivity,",
+    "ktora podmienia server.url na adres zapisany w telefonie.",
+    "",
+    "cleartext + allowMixedContent sa konieczne, bo serwer na budowie stoi",
+    "po HTTP w sieci lokalnej. Gdy pojawi sie HTTPS, oba mozna wylaczyc -",
+    "i wtedy w gre wraca tez TWA (patrz docs/project-docs/13).",
+    "",
+    "server.url NIE jest tu ustawione celowo: adres pochodzi z ustawien",
+    "telefonu, a nie z pliku wbudowanego w APK. Przy DHCP wbity adres",
+    "oznaczalby nowy APK dla calej ekipy po kazdej zmianie IP."
+  ]
+}

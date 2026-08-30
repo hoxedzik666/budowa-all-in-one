@@ -65,6 +65,7 @@ i bez bazy — i te testy biegną w ułamku sekundy.
 | `plan.py` | `PlanSheet`, `PlanLocation` — arkusze planów i pozycje obiektów; `PlanGeoref`, `PlanAnchor` — związanie arkusza z układem PL-2000/5; `punkty_na_metry()` przelicza odległość na rysunku na metry |
 | `wykonanie.py` | `PomiarWykonawczy` — rzędne zmierzone w wykopie. **Osobno od projektu**: pomiar nigdy go nie nadpisuje |
 | `postep.py` | `ZmianaStatusu`, `RaportDzienny` — postęp robót; tu też reguły ścieżki stanów i uprawnień do odbioru (`wolno_ustawic`) |
+| `zdjecie.py` | `Zdjecie` — zdjęcia z wykopu; w bazie sama ścieżka, pliki na dysku |
 | `audit.py` | `ImportRun` — historia importów wraz z pełną listą rozbieżności |
 | `user.py` | `User`, `Rola` — konta i uprawnienia; hasła wyłącznie jako skrót |
 | `task.py` | `Task`, `StatusZadania`, `Priorytet` — zadania globalne i przypisane |
@@ -175,6 +176,7 @@ Dlaczego nie wyszło: [`04-ocr-planow.md`](04-ocr-planow.md).
 | `auth.py` | logowanie i wylogowanie; lista endpointów jawnych |
 | `wykonanie.py` | dziennik wykonawczy: pomiary, odchyłki, rzeczywisty spadek |
 | `postep.py` | stan odcinków (`/postep`) i raporty dzienne (`/raporty`) |
+| `zdjecia.py` | wysyłka i podawanie zdjęć z budowy |
 | `pwa.py` | praca offline (service worker, `/offline`) i kody QR na studnie |
 | `panel.py` | zarządzanie kontami (tylko rola ADMIN) |
 | `zadania.py` | zadania globalne i przypisane, licznik do nawigacji |
@@ -222,6 +224,7 @@ pages/
 | `service-worker.js` | praca bez zasięgu — patrz [`12`](12-praca-w-terenie.md) |
 | `manifest.webmanifest`, `ikony/` | instalacja aplikacji na telefonie |
 | `js/app.js` | formatowanie liczb po polsku, filtr tabel, kopiowanie do schowka, przełącznik motywu |
+| `js/telefon.js` | GPS, aparat i skaner QR — **działa tylko wewnątrz APK** |
 | `js/service-worker.js` | praca bez zasięgu: statyki z cache, dane najpierw z sieci |
 | `manifest.webmanifest` · `ikony/` | instalacja na telefonie |
 | `vendor/` | **jQuery 3.7.1, Bootstrap 5.3.3 + Icons, Tailwind 3.4, Leaflet 1.9.4 — lokalnie, bez CDN.** Na budowie bywa bez zasięgu |
@@ -241,8 +244,10 @@ nawigację i rozwijane sekcje niewidocznymi. Pilnuje tego `tests/test_ui_regresj
 | `docs/sonnet-think-output/` | analizy źródeł danych: jak czytamy rysunek, model danych, podstawy niwelacji |
 | `data/exports/mapy`, `kafelki`, `wycinki` | cache obrazów. Można kasować — odtworzy się |
 | `data/exports/siec` | wynik konwertera planów. Kasowanie wymaga ponownego `flask konwertuj-plany` (~2 min) |
+| `data/zdjecia/` | **zdjęcia z wykopu — nie kasować.** Nie odtworzą się; wykop zostanie zasypany |
+| `.apk/` | projekt aplikacji na Androida wraz ze środowiskiem budowania w Dockerze |
 | `scripts/` | pomocnicze skrypty jednorazowe, uruchamiane ręcznie w kontenerze |
-| `tests/` | testy: 251 sztuk |
+| `tests/` | testy: 299 sztuk |
 | `migrations/` | katalog Flask-Migrate (Alembic) |
 
 ---
@@ -302,6 +307,9 @@ tests/test_plan_wektor.py      konwerter planów, eksporty, kafelki
 tests/test_georef.py           przekształcenie Helmerta, kontrola dopasowania
 tests/test_wykonanie.py        dziennik as-built, offline, kody QR
 tests/test_postep.py           uprawnienia ról, ścieżka stanów, raporty dzienne
+tests/test_gps.py              transformacja WGS84 → PL-2000/5 na osnowie
+tests/test_zdjecia.py          zmniejszanie, EXIF, zapis na dysku
+tests/test_apk.py              wpięcie funkcji telefonu, projekt Androida
 tests/conftest.py              fixture — w tym pułapka z kontekstem aplikacji
 ```
 

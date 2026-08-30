@@ -1,0 +1,122 @@
+/* Ekran konfiguracji adresu serwera.
+ *
+ * Kolorystyka i rozmiary sa te same, co w trybie terenowym aplikacji: duze
+ * pola dotykowe, mocny kontrast, czcionka na tyle duza, zeby dalo sie przeczytac
+ * w slonce i kliknac w rekawicy roboczej. To jedyny ekran, ktory czlowiek widzi
+ * przed polaczeniem z serwerem, wiec nie moze wygladac jak blad.
+ */
+
+:root {
+  --tlo: #212529;
+  --karta: #2b3035;
+  --tekst: #f8f9fa;
+  --przygaszony: #adb5bd;
+  --akcent: #0d6efd;
+  --ok: #198754;
+  --blad: #dc3545;
+  --obramowanie: #495057;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--tlo);
+  color: var(--tekst);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  display: flex;
+  padding: env(safe-area-inset-top) 1rem env(safe-area-inset-bottom);
+}
+
+.ekran {
+  margin: auto;
+  width: 100%;
+  max-width: 26rem;
+  padding: 1.5rem 0;
+}
+
+header { text-align: center; margin-bottom: 1.5rem; }
+.ikona { border-radius: 1rem; }
+h1 { font-size: 1.35rem; margin: .75rem 0 .25rem; }
+.podtytul { color: var(--przygaszony); font-size: .85rem; margin: 0; }
+
+.karta {
+  background: var(--karta);
+  border: 1px solid var(--obramowanie);
+  border-radius: .75rem;
+  padding: 1.25rem;
+}
+
+h2 { font-size: 1rem; margin: 0 0 .5rem; }
+.pomoc { color: var(--przygaszony); font-size: .875rem; margin: 0 0 1rem; }
+
+label {
+  display: block;
+  font-size: .8rem;
+  color: var(--przygaszony);
+  margin-bottom: .25rem;
+}
+
+input[type="url"] {
+  width: 100%;
+  /* 3rem wysokosci to minimum, ktore da sie trafic palcem w rekawicy. */
+  min-height: 3rem;
+  padding: .75rem;
+  font-size: 1rem;
+  color: var(--tekst);
+  background: var(--tlo);
+  border: 2px solid var(--obramowanie);
+  border-radius: .5rem;
+}
+input[type="url"]:focus {
+  outline: none;
+  border-color: var(--akcent);
+}
+
+button.glowny {
+  width: 100%;
+  min-height: 3.25rem;
+  margin-top: 1rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--akcent);
+  border: 0;
+  border-radius: .5rem;
+}
+button.glowny:disabled { opacity: .6; }
+button.glowny:active { transform: translateY(1px); }
+
+.komunikat {
+  margin-top: .75rem;
+  font-size: .9rem;
+  min-height: 1.5rem;
+}
+.komunikat.ok { color: var(--ok); }
+.komunikat.blad { color: var(--blad); }
+.komunikat.czekam { color: var(--przygaszony); }
+
+.podpowiedz {
+  margin-top: 1.25rem;
+  font-size: .85rem;
+  color: var(--przygaszony);
+}
+.podpowiedz summary {
+  cursor: pointer;
+  padding: .5rem 0;
+  color: var(--akcent);
+}
+.podpowiedz code {
+  background: var(--tlo);
+  padding: .1rem .3rem;
+  border-radius: .25rem;
+  font-size: .85em;
+}
+
+footer {
+  margin-top: 1.5rem;
+  text-align: center;
+  color: var(--przygaszony);
+  font-size: .75rem;
+}

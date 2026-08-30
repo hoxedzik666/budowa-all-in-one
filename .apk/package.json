@@ -1,0 +1,27 @@
+{
+  "name": "budowa-all-in-one-android",
+  "version": "1.0.0",
+  "description": "Aplikacja Android dla narzedzia Budowa All-in-One (wod-kan, DK29).",
+  "private": true,
+  "scripts": {
+    "sync": "cap sync android",
+    "build": "cd android && ./gradlew assembleDebug"
+  },
+  "comment-wersje": [
+    "Wersje sa przypiete, nie brane 'najnowsze'. Capacitor 7 wymaga Node 20+,",
+    "JDK 21 i Android SDK 35 - rozjazd ktorejkolwiek z tych rzeczy konczy sie",
+    "bledem w polowie budowania, a komunikat rzadko wskazuje prawdziwa przyczyne.",
+    "Jesli trzeba cofnac sie do Capacitora 6: JDK 17 i SDK 34 w Dockerfile."
+  ],
+  "dependencies": {
+    "@capacitor/android": "7.0.1",
+    "@capacitor/core": "7.0.1",
+    "@capacitor/camera": "7.0.0",
+    "@capacitor/geolocation": "7.0.0",
+    "@capacitor/preferences": "7.0.0",
+    "@capacitor-mlkit/barcode-scanning": "7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "7.0.1"
+  }
+}

@@ -1,6 +1,6 @@
 # Przegląd projektu
 
-> Dokumentacja techniczna narzędzia **Budowa All-in-One** — stan na etap 5.
+> Dokumentacja techniczna narzędzia **Budowa All-in-One** — stan na etap 6.
 
 ---
 
@@ -91,7 +91,7 @@ docs/*.pdf, *.xlsx, *.txt
            material_item, plan_sheet,
            plan_location, plan_georef, plan_anchor,
            pomiar_wykonawczy, zmiana_statusu,
-           raport_dzienny, import_run)
+           raport_dzienny, zdjecie, import_run)
                  │
      ┌───────────┴────────────┐
      ▼                        ▼
@@ -141,7 +141,10 @@ testować bez aplikacji i bez bazy (patrz `tests/test_rury.py`,
 | Warstwa postępu robót na mapie | `/mapa` | działa |
 | Raporty dzienne brygady | `/raporty` | działa |
 | Rola MONTER | `/panel/uzytkownicy` | działa |
-| Aplikacja na Androida (APK) | — | **analiza** — patrz `13` |
+| Aplikacja na Androida (APK) | `.apk/` | działa — patrz `15` |
+| Pozycja z GPS na planie | `/mapa` (tylko w APK) | działa |
+| Zdjęcia z wykopu | karta odcinka, raporty (tylko w APK) | działa |
+| Skaner kodów QR | pasek wyszukiwarki (tylko w APK) | działa |
 | Audyt jakości danych | `flask audyt-danych`, `/importy` | działa — patrz `11` |
 | Tyczenie ciągu rur (odczyt na łacie) | `/niwelator/ciag-rur` | działa |
 | Podgląd planu na pulpicie | `/` | działa |
@@ -188,5 +191,6 @@ docker compose exec web python -m pytest -q               # 213 testów
 - [`12-praca-w-terenie.md`](12-praca-w-terenie.md) — dziennik wykonawczy, offline, kody QR
 - [`13-android-apk.md`](13-android-apk.md) — **przeniesienie na Androida: analiza i plan**
 - [`14-postep-robot.md`](14-postep-robot.md) — stan odcinków, raporty dzienne, rola montera
+- [`15-aplikacja-android.md`](15-aplikacja-android.md) — **aplikacja na telefon: GPS, aparat, skaner**
 
 Analizy źródeł danych są w [`docs/sonnet-think-output/`](../sonnet-think-output/).

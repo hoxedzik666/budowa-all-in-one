@@ -221,15 +221,27 @@
        data-wykonanie="{{ url_for('wykonanie.api_odcinek', od=o.obiekt_od.kod, do_=o.obiekt_do.kod) }}">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
       <h3 class="h6 text-uppercase text-body-secondary mb-0">Wykonanie</h3>
-      <button class="btn btn-sm btn-outline-success py-0" type="button"
-              data-bs-toggle="collapse" data-bs-target="#pomiar-{{ o.id }}">
-        <i class="bi bi-plus-lg"></i> Wpisz pomiar z niwelatora
-      </button>
+      <div class="d-flex gap-1">
+        <button class="btn btn-sm btn-outline-success py-0" type="button"
+                data-bs-toggle="collapse" data-bs-target="#pomiar-{{ o.id }}">
+          <i class="bi bi-plus-lg"></i> Wpisz pomiar z niwelatora
+        </button>
+        <button class="btn btn-sm btn-outline-dark py-0" type="button" data-tylko-apk
+                data-zdjecie="#zdjecia-{{ o.id }}" data-dotyczy="{{ o.nazwa }}"
+                title="Zrób zdjęcie wykopu">
+          <i class="bi bi-camera"></i>
+        </button>
+      </div>
     </div>
 
     <div class="podsumowanie-wykonania small text-body-secondary">
       Sprawdzam, czy ten odcinek ma już pomiary…
     </div>
+
+    {# Zdjecia z wykopu. Rzedna mowi, ze jest 1,73 m; zdjecie mowi, ze na dnie
+       stoi woda - i przy odbiorze to ono jest dowodem. #}
+    <div id="zdjecia-{{ o.id }}" class="d-flex flex-wrap gap-1 mt-2 d-none"
+         data-zdjecia-dla="{{ o.nazwa }}"></div>
 
     <div class="collapse mt-2" id="pomiar-{{ o.id }}">
       <form method="post" action="{{ url_for('wykonanie.dodaj') }}" class="row g-2 align-items-end">

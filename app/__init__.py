@@ -54,6 +54,7 @@ def create_app(config_object=None) -> Flask:
     from app.blueprints.szukaj import szukaj_bp
     from app.blueprints.wykonanie import wykonanie_bp
     from app.blueprints.zadania import zadania_bp
+    from app.blueprints.zdjecia import zdjecia_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -66,6 +67,7 @@ def create_app(config_object=None) -> Flask:
     app.register_blueprint(wykonanie_bp)
     app.register_blueprint(pwa_bp)
     app.register_blueprint(postep_bp)
+    app.register_blueprint(zdjecia_bp)
 
     @app.before_request
     def wymagaj_logowania():

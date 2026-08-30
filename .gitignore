@@ -4,6 +4,8 @@ __pycache__/
 .env
 data/exports/*
 !data/exports/.gitkeep
+# Zdjecia z budowy - dane uzytkownika, nie kod.
+data/zdjecia/
 instance/
 *.log
 .pytest_cache/

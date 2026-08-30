@@ -213,6 +213,16 @@
           <i class="bi bi-plus-lg"></i> Zapisz raport
         </button>
       </form>
+
+      {# Zdjecie z dnia. Osobno od formularza, bo raport zapisuje sie przez
+         przeladowanie strony, a zdjecie leci od razu przez API. #}
+      <div class="mt-3" data-tylko-apk>
+        <button class="btn btn-outline-dark btn-sm w-100" type="button"
+                data-zdjecie="#zdjecia-dnia" data-dotyczy-z="[name=dotyczy]">
+          <i class="bi bi-camera"></i> Dodaj zdjęcie z budowy
+        </button>
+        <div id="zdjecia-dnia" class="d-flex flex-wrap gap-1 mt-2 d-none"></div>
+      </div>
     </div>
   </div>
 </div>

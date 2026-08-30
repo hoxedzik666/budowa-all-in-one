@@ -1,0 +1,6 @@
+# Generowane przy budowaniu - nie trzymamy tego w repozytorium.
+node_modules/
+android/
+wyjscie/
+package-lock.json
+.gradle/

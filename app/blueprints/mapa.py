@@ -640,3 +640,69 @@ def postep_strony(nr: int):
         "legenda": legenda,
         "powod": None,
     })
+
+
+# =====================================================================
+#  Pozycja z telefonu na planie
+# =====================================================================
+
+@mapa_bp.get("/api/mapa/z-gps/<int:nr>")
+def pozycja_z_gps(nr: int):
+    """Gdzie na tym arkuszu stoi osoba trzymajaca telefon.
+
+    Domyka lancuch zbudowany w etapie 4: GPS -> PL-2000/5 -> punkt rysunku.
+    Bez georeferencji arkusza nie ma jak odpowiedziec - i mowimy to wprost,
+    zamiast zwracac srodek strony.
+
+    Odpowiedz **zawsze** niesie dokladnosc pomiaru. GPS w telefonie ma 3-10 m:
+    znajdzie studnie, ale nie wytyczy rury, i nikt nie moze o tym zapomniec.
+    """
+    from app.services.wspolrzedne import PROG_DOKLADNOSCI_M, gps_na_pl2000, sprawdz_pozycje
+
+    strona = db.session.scalar(select(PlanSheet).where(PlanSheet.nr_strony == nr))
+    if strona is None:
+        return jsonify({"blad": f"Nie ma strony {nr}."}), 404
+    if strona.georef is None:
+        return jsonify({
+            "blad": "Ten arkusz nie jest związany z terenem — wskaż na nim dwa "
+                    "repery w trybie „Kotwica”, wtedy pozycja z GPS zacznie działać.",
+            "wymaga_georeferencji": True,
+        }), 404
+
+    try:
+        szerokosc = float(request.args["lat"])
+        dlugosc = float(request.args["lon"])
+    except (KeyError, ValueError):
+        return jsonify({"blad": "Wymagane: lat, lon (stopnie WGS84)."}), 400
+
+    dokladnosc = request.args.get("dokladnosc", type=float)
+    uwaga = sprawdz_pozycje(szerokosc, dlugosc, dokladnosc)
+
+    polnoc, wschod = gps_na_pl2000(szerokosc, dlugosc)
+    przeksztalcenie = strona.georef.przeksztalcenie()
+    x_pt, y_pt = przeksztalcenie.na_rysunek(polnoc, wschod)
+
+    szer_arkusza = float(strona.szerokosc_pt or 0)
+    wys_arkusza = float(strona.wysokosc_pt or 0)
+    na_arkuszu = 0 <= x_pt <= szer_arkusza and 0 <= y_pt <= wys_arkusza
+
+    # Promien kolka dokladnosci w punktach rysunku - zeby przegladarka nie
+    # musiala znac skali arkusza.
+    metry_na_punkt = przeksztalcenie.skala_m_na_pt or 1.0
+    promien_pt = round(dokladnosc / metry_na_punkt, 1) if dokladnosc else None
+
+    return jsonify({
+        "x_pt": x_pt,
+        "y_pt": y_pt,
+        "na_arkuszu": na_arkuszu,
+        "x_gis": polnoc,
+        "y_gis": wschod,
+        "uklad": strona.georef.uklad,
+        "dokladnosc_m": dokladnosc,
+        "promien_pt": promien_pt,
+        "uwaga": uwaga,
+        # Powtarzane przy kazdej odpowiedzi celowo - to nie jest ostrzezenie
+        # o bledzie, tylko stala cecha pomiaru z telefonu.
+        "do_tyczenia": False,
+        "dokladnosc_progowa_m": PROG_DOKLADNOSCI_M,
+    })

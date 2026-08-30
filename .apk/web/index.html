@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Budowa All-in-One — połączenie</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="ekran">
+    <header>
+      <img src="ikona.png" alt="" class="ikona" width="72" height="72">
+      <h1>Budowa All-in-One</h1>
+      <p class="podtytul">Obwodnica Krosna Odrzańskiego, DK29</p>
+    </header>
+
+    <section class="karta">
+      <h2>Adres serwera</h2>
+      <p class="pomoc">
+        Aplikacja pokazuje dane z serwera stojącego na budowie.
+        Wpisz jego adres — zapamiętam go na stałe.
+      </p>
+
+      <label for="adres">Adres</label>
+      <input id="adres" type="url" inputmode="url" autocapitalize="off"
+             autocomplete="off" spellcheck="false"
+             placeholder="http://192.168.2.121:8000">
+
+      <div id="komunikat" class="komunikat" role="status" aria-live="polite"></div>
+
+      <button id="polacz" class="glowny">Sprawdź i połącz</button>
+
+      <details class="podpowiedz">
+        <summary>Nie znam adresu</summary>
+        <p>
+          To adres komputera, na którym uruchomiono <code>docker compose up</code>,
+          z portem <code>8000</code>. Sprawdzisz go na tym komputerze komendą
+          <code>ipconfig</code> (Windows) albo <code>ip a</code> (Linux) —
+          szukaj adresu zaczynającego się od <code>192.168.</code>
+        </p>
+        <p>
+          Telefon musi być w tej samej sieci Wi-Fi co serwer.
+        </p>
+      </details>
+    </section>
+
+    <footer>
+      <span id="wersja"></span>
+    </footer>
+  </main>
+
+  <script src="shell.js"></script>
+</body>
+</html>

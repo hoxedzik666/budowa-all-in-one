@@ -1,0 +1,32 @@
+# Budowanie APK. Osobny plik compose, zeby `docker compose up` w katalogu
+# glownym nie ciagnal trzygigabajtowego obrazu Androida przy kazdym starcie
+# aplikacji.
+#
+#   docker compose -f .apk/docker-compose.yml run --rm build
+#
+# Wynik lezy w .apk/wyjscie/
+
+services:
+  build:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: budowa-apk:latest
+    volumes:
+      # Katalog projektu mobilnego. Wynik budowania ma wrocic na dysk, wiec
+      # montujemy caly katalog, a nie kopiujemy do obrazu.
+      - .:/projekt
+      # Cache Gradle i npm w wolumenach: pierwsze budowanie sciaga kilkaset
+      # megabajtow zaleznosci, kolejne juz nie.
+      - apk_gradle:/cache/gradle
+      - apk_npm:/cache/npm
+    environment:
+      # Adres serwera wpisany do aplikacji jako domyslny. Mozna go zmienic
+      # w telefonie, wiec to tylko podpowiedz przy pierwszym uruchomieniu.
+      DOMYSLNY_SERWER: ${DOMYSLNY_SERWER:-http://192.168.2.121:8000}
+    # Gradle lubi pamiec; bez tego duze projekty potrafia paść na OOM.
+    shm_size: 1gb
+
+volumes:
+  apk_gradle:
+  apk_npm:

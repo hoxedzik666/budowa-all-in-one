@@ -21,6 +21,14 @@ class Config:
     # Katalog z dokumentacja projektowa (PDF, XLSX, osnowa)
     DOCS_DIR = Path(os.environ.get("DOCS_DIR", BASE_DIR / "docs"))
     EXPORT_DIR = Path(os.environ.get("EXPORT_DIR", BASE_DIR / "data" / "exports"))
+    # Zdjecia z budowy leza POZA `exports`: tamto jest kasowalnym cache,
+    # a wykop, ktory sfotografowano, zostanie zasypany i nie wroci.
+    ZDJECIA_DIR = Path(os.environ.get("ZDJECIA_DIR", BASE_DIR / "data" / "zdjecia"))
+
+    # Bez tego Flask przyjmuje pliki dowolnej wielkosci. Zdjecie z telefonu ma
+    # kilkanascie megabajtow, wiec 25 MB zostawia zapas, a jednoczesnie nie
+    # pozwala zapchac dysku jednym zadaniem.
+    MAX_CONTENT_LENGTH = int(os.environ.get("MAX_UPLOAD_MB", 25)) * 1024 * 1024
 
     # Domyslne pliki zrodlowe
     PROFILE_PDF = "Profile Scalone.pdf"
