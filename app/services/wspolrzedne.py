@@ -46,7 +46,12 @@ ZAKRES_DLUGOSCI = (13.0, 17.5)
 @lru_cache(maxsize=2)
 def _przelicznik(z_epsg: int, na_epsg: int):
     """Transformator pyproj. Tworzony raz - jego budowa nie jest darmowa."""
-    from pyproj import Transformer
+    from app.services.opcjonalne import wymagaj
+
+    # W Termuxie pyproj bywa nieobecny (wymaga biblioteki PROJ). `wymagaj`
+    # zamienia ImportError na komunikat, ktory mowi, ze GPS nie przeliczy sie
+    # na PL-2000/5 - reszta narzedzia dziala dalej.
+    Transformer = wymagaj("pyproj").Transformer
 
     # always_xy=False: trzymamy sie kolejnosci z definicji ukladu, czyli
     # (szerokosc, dlugosc) dla WGS84 i (polnoc, wschod) dla PL-2000.

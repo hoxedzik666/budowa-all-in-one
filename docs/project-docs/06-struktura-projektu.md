@@ -90,6 +90,18 @@ profil) po napisie `n.p.m.`, a dane węzła od danych odcinka odróżnia po
 Rozstrzyga też węzły z kilkoma wlotami — wybiera trójkę (teren, dno, zagłębienie)
 spełniającą niezmiennik `zagłębienie = teren proj. − dno`.
 
+### `opcjonalne.py` — biblioteki, których gdzieś nie ma
+`LeniwyModul` udaje moduł: import odkłada do pierwszego użycia, a gdy biblioteki
+brak — zgłasza `BrakModulu` z komunikatem po polsku, który Flask zamienia na
+stronę z kodem 503. Dzięki temu `import fitz` w blueprintcie mapy nie przewraca
+całej aplikacji na telefonie, gdzie PyMuPDF się nie instaluje.
+Opis: [`16-termux.md`](16-termux.md).
+
+### `baza.py` — pragmy SQLite
+Ustawia przy każdym połączeniu `journal_mode=WAL`, `foreign_keys=ON`
+i `busy_timeout`. Bez pierwszego zapis blokuje odczyty, bez drugiego telefon
+przyjmowałby dane, które Postgres by odrzucił.
+
 ### `importer.py` — PDF i osnowa do bazy
 `importuj_profile()` zapisuje wynik parsera, `importuj_osnowe()` wczytuje repery
 z pliku `nazwa,X,Y,H`. Prowadzi `ImportRun` z listą ostrzeżeń.
@@ -246,6 +258,7 @@ nawigację i rozwijane sekcje niewidocznymi. Pilnuje tego `tests/test_ui_regresj
 | `data/exports/siec` | wynik konwertera planów. Kasowanie wymaga ponownego `flask konwertuj-plany` (~2 min) |
 | `data/zdjecia/` | **zdjęcia z wykopu — nie kasować.** Nie odtworzą się; wykop zostanie zasypany |
 | `.apk/` | projekt aplikacji na Androida wraz ze środowiskiem budowania w Dockerze |
+| `termux/` | skrypty uruchomienia serwera na telefonie: `instaluj.sh`, `uruchom.sh`, `autostart.sh` |
 | `scripts/` | pomocnicze skrypty jednorazowe, uruchamiane ręcznie w kontenerze |
 | `tests/` | testy: 299 sztuk |
 | `migrations/` | katalog Flask-Migrate (Alembic) |

@@ -29,6 +29,7 @@
       <div id="komunikat" class="komunikat" role="status" aria-live="polite"></div>
 
       <button id="polacz" class="glowny">Sprawdź i połącz</button>
+      <button id="ten-telefon" class="wtorny">Serwer na tym telefonie (Termux)</button>
 
       <details class="podpowiedz">
         <summary>Nie znam adresu</summary>
@@ -40,6 +41,19 @@
         </p>
         <p>
           Telefon musi być w tej samej sieci Wi-Fi co serwer.
+        </p>
+      </details>
+
+      <details class="podpowiedz">
+        <summary>Serwer stoi na tym telefonie</summary>
+        <p>
+          Jeśli narzędzie działa w Termuxie na tym samym telefonie, adresem jest
+          <code>127.0.0.1:8000</code> — wpisze go przycisk powyżej. Komputer ani
+          Wi-Fi nie są wtedy do niczego potrzebne.
+        </p>
+        <p>
+          Termux musi być uruchomiony: <code>./termux/uruchom.sh</code>.
+          Instrukcja: <code>docs/project-docs/16-termux.md</code>.
         </p>
       </details>
     </section>

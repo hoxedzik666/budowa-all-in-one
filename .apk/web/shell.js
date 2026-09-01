@@ -9,8 +9,12 @@
   "use strict";
 
   var KLUCZ = "adres_serwera";
+  /* Serwer uruchomiony w Termuxie na tym samym telefonie. Petla zwrotna nie
+   * przechodzi przez siec, wiec dziala tez w trybie samolotowym i bez Wi-Fi. */
+  var TEN_TELEFON = "http://127.0.0.1:8000";
   var pole = document.getElementById("adres");
   var przycisk = document.getElementById("polacz");
+  var przyciskTenTelefon = document.getElementById("ten-telefon");
   var komunikat = document.getElementById("komunikat");
 
   function pokaz(tekst, rodzaj) {
@@ -114,6 +118,14 @@
   przycisk.addEventListener("click", polacz);
   pole.addEventListener("keydown", function (zdarzenie) {
     if (zdarzenie.key === "Enter") polacz();
+  });
+
+  /* Przycisk tylko wpisuje adres i idzie ta sama droga co reczne wpisanie -
+   * lacznie ze sprawdzeniem serwera. Gdy Termux nie jest uruchomiony, czlowiek
+   * dowie sie tego tutaj, a nie po bialym ekranie w aplikacji. */
+  przyciskTenTelefon.addEventListener("click", function () {
+    pole.value = TEN_TELEFON;
+    polacz();
   });
 
   wczytajZapisany().then(function (zapisany) {

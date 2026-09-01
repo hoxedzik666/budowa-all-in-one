@@ -5,6 +5,7 @@ from flask import Blueprint, jsonify, request
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import aliased, selectinload
 
+from app.config import czy_termux
 from app.extensions import db
 from app.models import (
     Connection,
@@ -17,14 +18,27 @@ from app.models import (
     SurveyPoint,
     TypObiektu,
 )
+from app.services.opcjonalne import dostepne
 
 api_bp = Blueprint("api", __name__)
 
 
 @api_bp.get("/zdrowie")
 def zdrowie():
+    """Czy serwer zyje - i na czym stoi.
+
+    Pole `status` sprawdza ekran konfiguracji w APK, zanim zapisze adres serwera,
+    wiec jego nazwa i wartosc sa czescia umowy z aplikacja (`.apk/web/shell.js`).
+    Reszta pol to diagnostyka: na telefonie od razu widac, czy baza to plik
+    SQLite i ktorych bibliotek opcjonalnych brakuje - bez wchodzenia do logow.
+    """
     db.session.execute(select(1))
-    return jsonify({"status": "ok"})
+    return jsonify({
+        "status": "ok",
+        "baza": db.engine.dialect.name,
+        "termux": czy_termux(),
+        "moduly": dostepne(),
+    })
 
 
 @api_bp.get("/statystyki")

@@ -28,6 +28,25 @@ je raz na ekranie i dopisuje do `.env`. W bazie zostaje wyłącznie skrót.
 | Adminer (podgląd bazy) | <http://localhost:8080> — serwer `db`, user/hasło `budowa` |
 | PostgreSQL | `localhost:5433` |
 
+### Na telefonie, bez komputera (Termux)
+
+Całe narzędzie uruchamia się też **w kieszeni** — serwer, baza i wszystko inne
+stoi na telefonie, a otwiera się to przeglądarką albo aplikacją z `.apk/`:
+
+```bash
+pkg install git                                   # w Termuxie
+git clone <adres-repozytorium> ~/budowa-all-in-one
+cd ~/budowa-all-in-one
+./termux/instaluj.sh        # paczki, baza (SQLite), konto admina
+./termux/uruchom.sh         # http://127.0.0.1:8000
+```
+
+Dane przenosi się z komputera jednym plikiem (`flask zrzut-sqlite` → podmiana
+`data/budowa.sqlite3`), bo import z PDF wymaga PyMuPDF, którego na Androidzie
+nie ma — mapa i wycinki oryginału zostają wtedy na komputerze, a reszta
+narzędzia działa normalnie. Szczegóły:
+[`docs/project-docs/16-termux.md`](docs/project-docs/16-termux.md).
+
 ---
 
 ## Co narzędzie robi
@@ -92,6 +111,10 @@ i rzeczywisty spadek. **Pomiar nigdy nie nadpisuje projektu.**
 **Działa bez zasięgu** — instaluje się na telefonie i otwiera raz obejrzane
 strony offline. Do tego kody QR na studnie i karta odcinka do druku na A4.
 
+**Mieści się w telefonie** — cały serwer razem z bazą uruchamia się w Termuxie
+i odpowiada pod `127.0.0.1:8000`, więc na budowie bez komputera i bez Wi-Fi
+nadal widać rzędne, spadki i zapotrzebowanie na rury.
+
 ---
 
 ## Komendy
@@ -104,6 +127,7 @@ docker compose exec web python -m flask import-xlsx          # sam Excel
 docker compose exec web python -m flask konwertuj-plany      # sieć z planów (wektor)
 docker compose exec web python -m flask audyt-danych         # kontrola jakości danych
 docker compose exec web python -m flask statystyki           # co jest w bazie
+docker compose exec web python -m flask zrzut-sqlite         # cała baza w jednym pliku (na telefon)
 docker compose exec web python -m flask pokaz-odcinek Wyl101 D155
 docker compose exec web python -m pytest -q                  # testy
 ```
@@ -172,12 +196,16 @@ app/
 │   ├── rury.py                 # przelicznik 3 m / 6 m / mieszany
 │   ├── materialy.py            # wykaz materiałów odcinka
 │   ├── leveling.py             # obliczenia niwelacyjne
-│   └── spadek_ciagu.py         # tyczenie ciągu rur — odczyt na łacie
+│   ├── spadek_ciagu.py         # tyczenie ciągu rur — odczyt na łacie
+│   ├── opcjonalne.py           # biblioteki, których na telefonie nie ma
+│   └── baza.py                 # pragmy SQLite (WAL, klucze obce, oczekiwanie)
 ├── blueprints/      # main, api, szukaj, mapa, niwelator, auth, panel,
 │                    # zadania, wykonanie, postep, pwa
 ├── templates/       # Jinja2 + Bootstrap 5
 └── static/vendor/   # jQuery 3.7.1, Bootstrap 5.3.3, Tailwind 3.4, Leaflet 1.9.4
                      # — lokalnie, bez CDN, bo na budowie bywa bez zasięgu
+termux/              # uruchomienie serwera na telefonie (instaluj / uruchom / autostart)
+.apk/                # powłoka Capacitora: GPS, aparat, skaner QR
 docs/
 ├── Profile Scalone.pdf, Materiał.xlsx, !!_DK29_osnowa_ok_v1.txt
 ├── project-docs/                      # dokumentacja techniczna i instrukcja
@@ -195,7 +223,9 @@ docs/
 │   ├── 11-audyt-danych.md              # co było zepsute i jak naprawione
 │   ├── 12-praca-w-terenie.md           # dziennik, offline, kody QR
 │   ├── 13-android-apk.md               # przeniesienie na Androida: analiza
-│   └── 14-postep-robot.md              # stan odcinków, raporty, rola montera
+│   ├── 14-postep-robot.md              # stan odcinków, raporty, rola montera
+│   ├── 15-aplikacja-android.md         # powłoka Capacitora: GPS, aparat, QR
+│   └── 16-termux.md                    # cały serwer na telefonie (SQLite)
 └── sonnet-think-output/                # analizy źródeł danych
     ├── 01-niwelacja-podstawy.md        # reper, rzędne, niwelator, wzory
     ├── 02-analiza-profile-scalone.md   # jak czytam rysunek
@@ -206,8 +236,9 @@ docs/
 
 ## Stos
 
-Flask 3 · SQLAlchemy 2 · PostgreSQL 16 · PyMuPDF · openpyxl · qrcode · gunicorn ·
-Bootstrap 5 + Tailwind + jQuery + Leaflet · Service Worker · Docker Compose
+Flask 3 · SQLAlchemy 2 · PostgreSQL 16 (na telefonie: SQLite) · PyMuPDF ·
+openpyxl · qrcode · gunicorn · Bootstrap 5 + Tailwind + jQuery + Leaflet ·
+Service Worker · Docker Compose · Capacitor 7 (APK) · Termux
 
 ---
 
@@ -252,6 +283,17 @@ Bootstrap 5 + Tailwind + jQuery + Leaflet · Service Worker · Docker Compose
 - **Nowa rola nie pojawi się w bazie sama.** `create_all()` tworzy typ enum raz
   i nigdy go nie rusza; wartości dokłada `app/services/schemat.py`. Operacja jest
   nieodwracalna — Postgres nie ma `DROP VALUE`.
+- **Brak biblioteki to nie awaria.** PyMuPDF nie zainstaluje się na Androidzie,
+  więc na telefonie nie ma mapy ani wycinków PDF. Zamiast błędu 500 wychodzi
+  strona z kodem 503, która mówi, czego brakuje i gdzie tę rzecz zrobić.
+  Pilnuje tego `app/services/opcjonalne.py`: `import fitz` jest leniwy, bo jeden
+  import na poziomie modułu przewracał **całą** aplikację — łącznie z niwelatorem,
+  który z PDF-em nie ma nic wspólnego.
+- **Ten sam model opisuje dwie bazy.** `JSONB` istnieje tylko w Postgresie,
+  więc kolumny JSON są zadeklarowane z wariantem (`app/models/typy.py`) —
+  DDL Postgresa zostaje bez zmian, a SQLite dostaje zwykły `JSON`.
+  Na telefonie **`PRAGMA journal_mode=WAL` nie jest ozdobą**: bez niej zapis
+  pomiaru blokuje odczyty i przeglądanie odcinków kończy się „database is locked".
 - **Kafelki mapy renderują się z listy wyświetlania PyMuPDF** — 25 razy szybciej
   niż przetwarzanie strony od nowa przy każdym kafelku. Bez tego zoom by się
   zacinał.

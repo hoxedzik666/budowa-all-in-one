@@ -32,7 +32,10 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import fitz
+# PyMuPDF pod udawana nazwa - import odklada sie do pierwszego uzycia,
+# zeby brak biblioteki (telefon) nie przewracal calej aplikacji.
+# Szczegoly: app/services/opcjonalne.py
+from app.services.opcjonalne import fitz
 
 # Kod obiektu tak, jak moze go zwrocic OCR - z typowymi przekreceniami.
 # Bez wariantu "0" na poczatku: cyfra zero mylona z litera O zamieniala
@@ -105,8 +108,10 @@ def _kafelki(szer_px: int, wys_px: int):
 def ocr_strony(page, nr_strony: int, dopuszczalne_kody: set[str],
                dpi: int = DPI) -> WynikStrony:
     """Przeleć jedna strone OCR-em i zwroc trafienia ograniczone do znanych kodow."""
-    import pytesseract
-    from PIL import Image
+    from app.services.opcjonalne import wymagaj
+
+    pytesseract = wymagaj("pytesseract")
+    Image = wymagaj("PIL.Image")
 
     wynik = WynikStrony(
         nr_strony=nr_strony,

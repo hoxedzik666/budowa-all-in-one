@@ -31,7 +31,10 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import fitz
+# PyMuPDF pod udawana nazwa - import odklada sie do pierwszego uzycia,
+# zeby brak biblioteki (telefon) nie przewracal calej aplikacji.
+# Szczegoly: app/services/opcjonalne.py
+from app.services.opcjonalne import fitz
 
 MM_NA_PUNKT = 25.4 / 72.0
 TOL_KOLORU = 0.02

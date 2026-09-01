@@ -1,7 +1,13 @@
 __pycache__/
 *.py[cod]
 .venv/
+.venv-*/
 .env
+# Baza na telefonie (Termux) - dane budowy, nie kod. WAL i SHM to pliki
+# towarzyszace dziennikowi SQLite, powstaja obok bazy.
+data/*.sqlite3
+data/*.sqlite3-wal
+data/*.sqlite3-shm
 data/exports/*
 !data/exports/.gitkeep
 # Zdjecia z budowy - dane uzytkownika, nie kod.

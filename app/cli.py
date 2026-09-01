@@ -147,7 +147,7 @@ def register_cli(app: Flask) -> None:
         katalog = Path(app.config["EXPORT_DIR"]) / "siec"
         katalog.mkdir(parents=True, exist_ok=True)
 
-        import fitz
+        from app.services.opcjonalne import fitz
 
         doc = fitz.open(sciezka)
         wszystkie = list(range(1, doc.page_count + 1))
@@ -382,6 +382,66 @@ def register_cli(app: Flask) -> None:
     def statystyki() -> None:
         """Co siedzi w bazie."""
         _podsumowanie()
+
+    # ------------------------------------------------- baza na telefon
+
+    @app.cli.command("zrzut-sqlite")
+    @click.argument("plik", required=False)
+    @click.option("--nadpisz", is_flag=True, help="Skasuj plik docelowy, jesli istnieje.")
+    def zrzut_sqlite(plik: str | None, nadpisz: bool) -> None:
+        """Przepisz cala baze do jednego pliku SQLite - do przeniesienia na telefon.
+
+        Import z PDF wymaga PyMuPDF, ktorego na Androidzie nie ma, wiec telefon
+        nie zaimportuje dokumentacji u siebie. Dostaje gotowa baze: ten plik
+        kopiuje sie do `data/budowa.sqlite3` w Termuxie i to wszystko.
+
+        Kolumny JSON przechodza same - modele deklaruja je jako JSON z wariantem
+        JSONB dla Postgresa (app/models/typy.py), wiec ten sam model opisuje
+        obie bazy.
+        """
+        from sqlalchemy import create_engine, insert, select as wybierz
+
+        cel = Path(plik) if plik else Path(app.config["EXPORT_DIR"]) / "budowa-telefon.sqlite3"
+        cel.parent.mkdir(parents=True, exist_ok=True)
+
+        if cel.exists():
+            if not nadpisz:
+                raise SystemExit(
+                    f"Plik {cel} juz istnieje. Dopisz --nadpisz albo podaj inna nazwe."
+                )
+            cel.unlink()
+
+        zrodlo = db.engine
+        if zrodlo.dialect.name == "sqlite" and Path(zrodlo.url.database or "").resolve() == cel.resolve():
+            raise SystemExit("Zrodlo i cel to ten sam plik.")
+
+        click.echo(f"Zrzut z {zrodlo.dialect.name} do {cel} ...")
+        silnik_celu = create_engine(f"sqlite:///{cel}")
+        db.metadata.create_all(silnik_celu)
+
+        PARTIA = 500
+        razem = 0
+        with silnik_celu.begin() as zapis:
+            # Kolejnosc `sorted_tables` idzie od tabel bez zaleznosci w gore,
+            # wiec klucze obce zawsze maja juz na co wskazywac.
+            for tabela in db.metadata.sorted_tables:
+                wiersze = db.session.execute(wybierz(tabela)).mappings().all()
+                if not wiersze:
+                    click.echo(f"  {tabela.name:24} —")
+                    continue
+                for poczatek in range(0, len(wiersze), PARTIA):
+                    zapis.execute(
+                        insert(tabela),
+                        [dict(w) for w in wiersze[poczatek:poczatek + PARTIA]],
+                    )
+                razem += len(wiersze)
+                click.echo(f"  {tabela.name:24} {len(wiersze):6d}")
+        silnik_celu.dispose()
+
+        rozmiar = cel.stat().st_size / 1024 / 1024
+        click.echo(f"\nGotowe: {cel} ({rozmiar:.1f} MB, {razem} wierszy)")
+        click.echo("Przegraj ten plik na telefon jako data/budowa.sqlite3")
+        click.echo("(instrukcja: docs/project-docs/16-termux.md)")
 
     @app.cli.command("pokaz-odcinek")
     @click.argument("od")

@@ -2,10 +2,10 @@
 from datetime import datetime
 
 from sqlalchemy import DateTime, Integer, String, Text, func
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.extensions import db
+from app.models.typy import JSON_ELASTYCZNY
 
 
 class ImportRun(db.Model):
@@ -24,8 +24,8 @@ class ImportRun(db.Model):
     liczba_ostrzezen: Mapped[int] = mapped_column(Integer, default=0)
 
     # Lista rozbieznosci: niezmiennik zaglebienia, spadek vs rzedne, PDF vs XLSX.
-    ostrzezenia: Mapped[list | None] = mapped_column(JSONB)
-    statystyki: Mapped[dict | None] = mapped_column(JSONB)
+    ostrzezenia: Mapped[list | None] = mapped_column(JSON_ELASTYCZNY)
+    statystyki: Mapped[dict | None] = mapped_column(JSON_ELASTYCZNY)
     blad: Mapped[str | None] = mapped_column(Text)
 
     rozpoczeto: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

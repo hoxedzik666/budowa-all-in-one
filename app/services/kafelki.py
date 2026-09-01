@@ -48,7 +48,10 @@ import math
 import threading
 from pathlib import Path
 
-import fitz
+# PyMuPDF pod udawana nazwa - import odklada sie do pierwszego uzycia,
+# zeby brak biblioteki (telefon) nie przewracal calej aplikacji.
+# Szczegoly: app/services/opcjonalne.py
+from app.services.opcjonalne import fitz
 
 BOK_KAFELKA = 256
 MAX_ZOOM = 7            # przy arkuszu 4900 pt to ok. 1500 dpi - grubo powyzej sensu

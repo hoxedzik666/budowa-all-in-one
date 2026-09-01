@@ -16,12 +16,15 @@ import hashlib
 from io import BytesIO
 from pathlib import Path
 
-import fitz
 from flask import Blueprint, abort, current_app, jsonify, render_template, request, send_file
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import aliased, selectinload
 
 from app.extensions import db
+# PyMuPDF pod udawana nazwa: import odklada sie do pierwszego uzycia, wiec brak
+# tej biblioteki (telefon w Termuxie) nie przewraca calej aplikacji, a tylko te
+# funkcje, ktore naprawde czytaja PDF. Szczegoly: app/services/opcjonalne.py
+from app.services.opcjonalne import fitz, wymagaj
 from app.models import (
     NetworkObject,
     PlanAnchor,
@@ -115,6 +118,12 @@ def _renderuj(nr_strony: int, clip: fitz.Rect | None, dpi: int,
 
 @mapa_bp.get("/mapa")
 def przegladarka():
+    # Mapa sklada sie z kafelkow renderowanych z PDF-a na zadanie. Bez PyMuPDF
+    # strona owszem powstanie - strony planu sa zapisane w bazie - ale kazdy
+    # kafelek skonczy sie bledem i uzytkownik dostanie pusty, szary prostokat
+    # bez wyjasnienia. Lepiej powiedziec to od razu, na wejsciu.
+    wymagaj("fitz")
+
     strony = zapewnij_strony()
     nr = int(request.args.get("strona", 1))
     strona = next((s for s in strony if s.nr_strony == nr), strony[0] if strony else None)

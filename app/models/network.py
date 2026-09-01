@@ -15,11 +15,11 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.extensions import db
 from app.models.enums import Branza, StatusWykonania, TypObiektu, TypOdniesienia, ZrodloDanych
+from app.models.typy import JSON_ELASTYCZNY
 
 
 def _f(v):
@@ -72,7 +72,7 @@ class Profile(db.Model):
 
     dlugosc_calkowita_m: Mapped[float | None] = mapped_column(Numeric(10, 2))
     blok_index: Mapped[int | None] = mapped_column(Integer)
-    bbox: Mapped[dict | None] = mapped_column(JSONB)
+    bbox: Mapped[dict | None] = mapped_column(JSON_ELASTYCZNY)
 
     utworzono: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -157,7 +157,7 @@ class NetworkObject(db.Model):
     zrodlo: Mapped[ZrodloDanych] = mapped_column(
         Enum(ZrodloDanych, name="zrodlo_danych"), default=ZrodloDanych.PDF_PROFIL
     )
-    surowe: Mapped[dict | None] = mapped_column(JSONB)
+    surowe: Mapped[dict | None] = mapped_column(JSON_ELASTYCZNY)
 
     utworzono: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     zmieniono: Mapped[datetime] = mapped_column(
@@ -231,7 +231,7 @@ class ObjectOccurrence(db.Model):
     rzedna_terenu_proj: Mapped[float | None] = mapped_column(Numeric(8, 3))
     rzedna_terenu_istn: Mapped[float | None] = mapped_column(Numeric(8, 3))
     opis: Mapped[str | None] = mapped_column(Text)
-    bbox: Mapped[dict | None] = mapped_column(JSONB)
+    bbox: Mapped[dict | None] = mapped_column(JSON_ELASTYCZNY)
 
     profil = relationship("Profile", back_populates="wystapienia")
     obiekt = relationship("NetworkObject", back_populates="wystapienia")
@@ -290,7 +290,7 @@ class Segment(db.Model):
     podejrzany: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     powod_podejrzenia: Mapped[str | None] = mapped_column(Text)
 
-    surowe: Mapped[dict | None] = mapped_column(JSONB)
+    surowe: Mapped[dict | None] = mapped_column(JSON_ELASTYCZNY)
     utworzono: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     profil = relationship("Profile", back_populates="odcinki")

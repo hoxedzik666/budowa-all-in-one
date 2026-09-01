@@ -12,6 +12,7 @@ from sqlalchemy import delete, select
 
 from app.models import PlanAnchor, PlanGeoref, PlanSheet, SurveyPoint
 from app.services.georef import METRY_NA_PUNKT_1_1000, odleglosc_m
+from tests.conftest import wymaga_pyproj
 from app.services.wspolrzedne import (
     PROG_DOKLADNOSCI_M,
     gps_na_pl2000,
@@ -27,6 +28,7 @@ KROSNO_DLUGOSC = (14.90, 15.30)
 # ------------------------------------------------------------ transformacja
 
 
+@wymaga_pyproj
 def test_osnowa_lezy_w_krosnie_odrzanskim(db):
     """Najmocniejszy sprawdzian, jaki mamy: 151 punktow o znanych wspolrzednych.
 
@@ -46,6 +48,7 @@ def test_osnowa_lezy_w_krosnie_odrzanskim(db):
             f"{punkt.nazwa}: długość {dlugosc} poza okolicą Krosna")
 
 
+@wymaga_pyproj
 def test_przeliczenie_tam_i_z_powrotem(db):
     punkt = db.session.scalar(select(SurveyPoint).where(SurveyPoint.x.isnot(None)))
     if punkt is None:
@@ -59,6 +62,7 @@ def test_przeliczenie_tam_i_z_powrotem(db):
     assert odleglosc_m((polnoc, wschod), wrocone) < 0.01
 
 
+@wymaga_pyproj
 def test_osie_nie_sa_zamienione(db):
     """W PL-2000 X to polnoc, Y to wschod - odwrotnie niz w matematyce.
 
@@ -70,6 +74,7 @@ def test_osie_nie_sa_zamienione(db):
     assert 5_450_000 < wschod < 5_560_000, f"Y (wschód) wyszło {wschod}"
 
 
+@wymaga_pyproj
 def test_ruch_na_polnoc_zwieksza_wspolrzedna_polnocna():
     poludniej = gps_na_pl2000(52.00, 15.09)
     polnocniej = gps_na_pl2000(52.01, 15.09)
@@ -133,6 +138,7 @@ def arkusz_zwiazany(klient, db):
     db.session.commit()
 
 
+@wymaga_pyproj
 def test_gps_trafia_w_reper_ktory_sam_wskazalismy(klient, arkusz_zwiazany):
     """Najlepszy sprawdzian calego lancucha GPS -> PL-2000 -> punkt rysunku.
 
@@ -152,6 +158,7 @@ def test_gps_trafia_w_reper_ktory_sam_wskazalismy(klient, arkusz_zwiazany):
     assert dane["uwaga"] is None
 
 
+@wymaga_pyproj
 def test_odpowiedz_zawsze_niesie_dokladnosc(klient, arkusz_zwiazany):
     """GPS z telefonu ma 3-10 m i nikt nie moze o tym zapomniec."""
     strona, _ = arkusz_zwiazany
@@ -163,6 +170,7 @@ def test_odpowiedz_zawsze_niesie_dokladnosc(klient, arkusz_zwiazany):
     assert dane["do_tyczenia"] is False
 
 
+@wymaga_pyproj
 def test_pozycja_daleko_od_arkusza(klient, arkusz_zwiazany):
     """Osoba po drugiej stronie Polski ma dostac wspolrzedne, ale i informacje,
     ze na tym arkuszu jej nie ma."""

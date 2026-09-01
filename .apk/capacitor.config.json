@@ -8,7 +8,8 @@
   "server": {
     "androidScheme": "http",
     "cleartext": true,
-    "allowNavigation": ["*"]
+    "allowNavigation": ["*"],
+    "errorPath": "blad.html"
   },
   "plugins": {
     "CapacitorHttp": {
@@ -26,6 +27,10 @@
     "",
     "server.url NIE jest tu ustawione celowo: adres pochodzi z ustawien",
     "telefonu, a nie z pliku wbudowanego w APK. Przy DHCP wbity adres",
-    "oznaczalby nowy APK dla calej ekipy po kazdej zmianie IP."
+    "oznaczalby nowy APK dla calej ekipy po kazdej zmianie IP.",
+    "",
+    "errorPath wskazuje strone pokazywana, gdy zapisany adres nie odpowiada.",
+    "Bez niej Android pokazuje bialy ekran, a najczestsza przyczyna jest",
+    "prozaiczna: serwer w Termuxie nie zostal uruchomiony."
   ]
 }

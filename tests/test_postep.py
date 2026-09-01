@@ -114,14 +114,38 @@ def test_monter_nie_przydziela_zadan():
 
 
 def test_rola_monter_istnieje_w_bazie(db):
-    """Typ enum w Postgresie trzeba rozszerzyc osobno - `create_all` tego nie robi."""
+    """Nowa rola musi dac sie zapisac - a to znaczy co innego w kazdym silniku.
+
+    W Postgresie typ enum trzeba rozszerzyc osobno (`ALTER TYPE`), bo
+    `create_all` tworzy go raz i nigdy nie rusza - stad zagladamy wprost do
+    `pg_enum`. W SQLite typow wyliczeniowych nie ma: `Enum` jest tam kolumna
+    tekstowa z warunkiem `CHECK`, budowanym z aktualnej listy w Pythonie. Tam
+    sprawdzianem jest po prostu zapis konta montera.
+    """
     from sqlalchemy import text
 
-    wartosci = {w for (w,) in db.session.execute(text(
-        "SELECT enumlabel FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid "
-        "WHERE t.typname = 'rola'"
-    )).all()}
-    assert "MONTER" in wartosci, "uruchom 'flask init-db' - brakuje ALTER TYPE rola"
+    if db.engine.dialect.name == "postgresql":
+        wartosci = {w for (w,) in db.session.execute(text(
+            "SELECT enumlabel FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid "
+            "WHERE t.typname = 'rola'"
+        )).all()}
+        assert "MONTER" in wartosci, "uruchom 'flask init-db' - brakuje ALTER TYPE rola"
+        return
+
+    from app.models import User
+
+    konto = User(login="pytest-monter-enum", imie_nazwisko="Próba roli",
+                 rola=Rola.MONTER)
+    konto.ustaw_haslo("pytest-haslo-testowe")
+    db.session.add(konto)
+    db.session.commit()
+    try:
+        zapisane = db.session.scalar(
+            select(User).where(User.login == "pytest-monter-enum"))
+        assert zapisane.rola is Rola.MONTER
+    finally:
+        db.session.delete(konto)
+        db.session.commit()
 
 
 # --------------------------------------------------- stan odcinka przez HTTP
@@ -298,6 +322,7 @@ def czyste_raporty(db):
     db.session.commit()
 
 
+@pytest.mark.usefixtures("wymaga_danych")
 def test_raport_zapisuje_sie_z_metrami(klient, czyste_raporty, db):
     odpowiedz = klient.post("/raporty/dodaj", data={
         "dotyczy": NAZWA_ODCINKA, "opis": "ułożono 18 m Ø500",

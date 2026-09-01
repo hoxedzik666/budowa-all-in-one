@@ -39,7 +39,10 @@ import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 
-import fitz
+# PyMuPDF pod udawana nazwa - import odklada sie do pierwszego uzycia,
+# zeby brak biblioteki (telefon) nie przewracal calej aplikacji.
+# Szczegoly: app/services/opcjonalne.py
+from app.services.opcjonalne import fitz
 
 # Podpisy pasm tabeli. Wystarczy trafic kilka - bierzemy obrys wszystkich.
 NAGLOWKI_PASM = (

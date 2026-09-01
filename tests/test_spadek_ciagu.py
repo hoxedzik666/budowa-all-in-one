@@ -158,6 +158,7 @@ def test_podpowiedz_karba_bierze_srednice_zewnetrzna():
 # ------------------------------------------------------------------- HTTP
 
 
+@pytest.mark.usefixtures("wymaga_danych")
 def test_endpoint_ciagu_liczy_odcinek(klient):
     d = klient.post("/niwelator/ciag-rur/oblicz", json={
         "od": "D114", "do": "D115",

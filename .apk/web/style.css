@@ -88,6 +88,20 @@ button.glowny {
 button.glowny:disabled { opacity: .6; }
 button.glowny:active { transform: translateY(1px); }
 
+/* Wybor bez ryzyka: wpisuje gotowy adres, niczego nie zapisuje sam. */
+button.wtorny {
+  width: 100%;
+  min-height: 3rem;
+  margin-top: .75rem;
+  font-size: .95rem;
+  color: var(--akcent);
+  background: transparent;
+  border: 2px solid var(--obramowanie);
+  border-radius: .5rem;
+}
+button.wtorny:disabled { opacity: .6; }
+button.wtorny:active { transform: translateY(1px); }
+
 .komunikat {
   margin-top: .75rem;
   font-size: .9rem;

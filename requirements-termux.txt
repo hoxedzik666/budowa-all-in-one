@@ -1,0 +1,44 @@
+# Zaleznosci dla telefonu (Termux).
+#
+# Roznica wzgledem `requirements.txt` nie jest kwestia gustu: Termux to
+# Android, czyli bionic libc, a nie manylinux. Kola z PyPI zbudowane dla
+# Linuksa tam nie wchodza, a to co nie ma kola, musi sie skompilowac na
+# miejscu - albo nie da sie zainstalowac w ogole.
+#
+# Ta lista zawiera wylacznie rzeczy, ktore na telefonie wchodza. Aplikacja
+# jest napisana tak, zeby bez pozostalych startowala i dzialala; funkcje,
+# ktore ich wymagaja, mowia wprost, czego brakuje (app/services/opcjonalne.py).
+
+Flask==3.0.3
+Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.0.7
+Flask-Login==0.6.3
+SQLAlchemy==2.0.36
+alembic==1.14.0
+python-dotenv==1.0.1
+gunicorn==23.0.0
+openpyxl==3.1.5
+# Kody QR na studnie - czysty Python, rysuje przez Pillow.
+qrcode==8.0
+# Pillow lepiej wziac z `pkg install python-pillow` (gotowa paczka Termuxa)
+# niz kompilowac. Skrypt termux/instaluj.sh robi to za uzytkownika, a ten wpis
+# zostaje na wypadek instalacji recznej.
+Pillow==11.0.0
+click==8.1.7
+Werkzeug==3.0.6
+pytest==8.3.4
+
+# --- czego tu NIE MA i dlaczego ---
+#
+# psycopg[binary]  baza na telefonie to SQLite (jeden plik, bez demona).
+#                  Kto mimo to chce Postgresa: `pkg install postgresql`,
+#                  `pip install psycopg` (bez [binary]) i wlasny DATABASE_URL.
+# PyMuPDF          brak kola dla Androida, a budowa ze zrodel ciagnie cale
+#                  MuPDF. Bez niego nie ma mapy, kafelkow ani wycinkow PDF -
+#                  te robi sie na komputerze, telefon dostaje gotowa baze.
+# pdfplumber       potrzebne tylko przy imporcie z PDF, ktory i tak wymaga PyMuPDF.
+# pytesseract      wymaga binarki tesseract; sluzy jednej drodze historycznej
+#                  (docs/project-docs/04-ocr-planow.md).
+# pyproj           wymaga biblioteki PROJ. Bez niej nie przeliczymy GPS na
+#                  PL-2000/5. Kto chce: `pkg install proj` i `pip install pyproj`.
+# pytest-cov       pokrycie testow mierzy sie na komputerze, nie w terenie.

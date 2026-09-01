@@ -8,10 +8,14 @@ from pathlib import Path
 import pytest
 
 from app.services.pdf_profile_parser import ProfileParser, parsuj_profile
+from tests.conftest import wymaga_pymupdf
 
 PDF = Path("docs/Profile Scalone.pdf")
 
-pytestmark = pytest.mark.skipif(not PDF.exists(), reason="brak pliku dokumentacji")
+pytestmark = [
+    pytest.mark.skipif(not PDF.exists(), reason="brak pliku dokumentacji"),
+    wymaga_pymupdf,
+]
 
 
 @pytest.fixture(scope="module")

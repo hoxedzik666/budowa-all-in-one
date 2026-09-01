@@ -1,0 +1,29 @@
+{% extends "layouts/base.html" %}
+{% block tytul %}Ta funkcja nie działa na telefonie{% endblock %}
+
+{% block tresc %}
+<div class="kafelek p-4 text-center">
+  <div class="display-5 mb-3"><i class="bi bi-phone-flip text-body-secondary"></i></div>
+  <h1 class="h4 mb-2">Tej funkcji nie zrobię na tym urządzeniu</h1>
+  <p class="text-body-secondary mb-4">
+    Wymaga biblioteki <code>{{ blad.nazwa }}</code>, której tu nie ma.<br>
+    Odpowiada ona za {{ blad.po_co }}.
+  </p>
+
+  <div class="alert alert-info text-start small d-inline-block mb-4">
+    {{ blad.jak_naprawic }}
+  </div>
+
+  <p class="mb-0">
+    <a class="btn btn-primary" href="{{ url_for('main.pulpit') }}">Wróć na pulpit</a>
+    <a class="btn btn-outline-secondary" href="{{ url_for('szukaj.szukaj') }}">Szukaj odcinka</a>
+  </p>
+
+  <hr class="my-4">
+
+  <p class="text-body-secondary small mb-0">
+    Reszta narzędzia działa normalnie: wyszukiwarka, karty odcinków, przelicznik rur,
+    niwelator, materiały, postęp robót, raporty, zadania, kody QR i zdjęcia.
+  </p>
+</div>
+{% endblock %}

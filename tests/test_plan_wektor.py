@@ -11,8 +11,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import fitz
 import pytest
+
+# Te testy czytaja PDF-y - bez PyMuPDF nie ma czego sprawdzac. Na telefonie
+# (Termux) biblioteki tej nie da sie zainstalowac, wiec zamiast wywracac cala
+# zbiorke bledem importu, ten plik sie tam pomija.
+fitz = pytest.importorskip(
+    "fitz", reason="PyMuPDF niedostepny (np. Termux)", exc_type=ImportError)
 
 from app.services.plan_eksport import Odwzorowanie, do_csv, do_dxf, do_geojson, do_json, z_json
 from app.services.plan_wektor import (

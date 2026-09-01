@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Budowa All-in-One — serwer nie odpowiada</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!--
+    Strona pokazywana, gdy zapisany adres serwera nie odpowiada
+    (`server.errorPath` w capacitor.config.json).
+
+    Bez niej Android pokazuje wlasny komunikat "nie mozna otworzyc strony"
+    albo bialy ekran - a najczestsza przyczyna jest prozaiczna i do naprawienia
+    w dziesiec sekund: serwer w Termuxie nie zostal uruchomiony.
+
+    Strona dziala tez wtedy, gdy most Capacitora jest nieosiagalny: adres bierze
+    z localStorage (zapisuje go tam rownolegle shell.js), a powrot do ekranu
+    konfiguracji robi zwyklym przejsciem do index.html.
+  -->
+  <main class="ekran">
+    <header>
+      <img src="ikona.png" alt="" class="ikona" width="72" height="72">
+      <h1>Serwer nie odpowiada</h1>
+      <p class="podtytul" id="adres-serwera"></p>
+    </header>
+
+    <section class="karta">
+      <h2>Co najczęściej to znaczy</h2>
+      <p class="pomoc">
+        Aplikacja jest tylko oknem na serwer — sama danych nie trzyma.
+        Pod zapisanym adresem nikt teraz nie odpowiada.
+      </p>
+
+      <details class="podpowiedz" open>
+        <summary>Serwer stoi na tym telefonie (Termux)</summary>
+        <p>
+          Otwórz Termuxa i uruchom:<br>
+          <code>cd ~/budowa-all-in-one &amp;&amp; ./termux/uruchom.sh</code>
+        </p>
+        <p>
+          Zostaw Termuxa uruchomionego — serwer działa tak długo, jak on.
+        </p>
+      </details>
+
+      <details class="podpowiedz">
+        <summary>Serwer stoi na komputerze</summary>
+        <p>
+          Telefon musi być w tej samej sieci Wi-Fi. Sprawdź, czy komputer jest
+          włączony i czy działa na nim <code>docker compose up</code>.
+        </p>
+        <p>
+          Adres komputera mógł się też zmienić — wtedy trzeba wpisać nowy.
+        </p>
+      </details>
+
+      <button id="ponow" class="glowny">Spróbuj ponownie</button>
+      <button id="zmien" class="wtorny">Zmień adres serwera</button>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      "use strict";
+
+      var KLUCZ = "adres_serwera";
+
+      function most() {
+        return window.Capacitor && window.Capacitor.Plugins;
+      }
+
+      function zapisany() {
+        try { return localStorage.getItem(KLUCZ) || ""; } catch (e) { return ""; }
+      }
+
+      var adres = zapisany();
+      document.getElementById("adres-serwera").textContent = adres || "";
+
+      document.getElementById("ponow").addEventListener("click", function () {
+        if (adres) {
+          window.location.href = adres + "/";
+        } else {
+          window.location.href = "index.html";
+        }
+      });
+
+      document.getElementById("zmien").addEventListener("click", async function () {
+        var wtyczki = most();
+        if (wtyczki && wtyczki.KonfiguracjaSerwera) {
+          /* Zapomnienie adresu uruchamia aktywnosc od nowa, a ta - nie majac
+           * adresu - pokazuje ekran konfiguracji. */
+          await wtyczki.KonfiguracjaSerwera.zapomnij();
+          return;
+        }
+        window.location.href = "index.html";
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -118,6 +118,7 @@ def test_nie_da_sie_zalozyc_konta_o_istniejacym_loginie(klient):
 # ---------------------------------------------------------------- zadania
 
 
+@pytest.mark.usefixtures("wymaga_danych")
 def test_dodanie_zadania_globalnego(klient, db):
     from sqlalchemy import select
 
@@ -139,6 +140,7 @@ def test_dodanie_zadania_globalnego(klient, db):
     db.session.commit()
 
 
+@pytest.mark.usefixtures("wymaga_danych")
 def test_zadanie_moze_wskazywac_odcinek(klient, db):
     from sqlalchemy import select
 

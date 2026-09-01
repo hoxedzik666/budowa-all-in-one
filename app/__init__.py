@@ -2,12 +2,21 @@
 import json
 from decimal import Decimal
 
-from flask import Flask, redirect, request, url_for
+from flask import (
+    Flask,
+    current_app,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 from flask.json.provider import DefaultJSONProvider
 from flask_login import current_user
 
 from app.config import get_config
 from app.extensions import db, login_manager, migrate
+from app.services.opcjonalne import BrakModulu
 
 
 class PolishJSONProvider(DefaultJSONProvider):
@@ -27,6 +36,13 @@ def create_app(config_object=None) -> Flask:
     app = Flask(__name__, instance_relative_config=False)
     app.config.from_object(config_object or get_config())
     app.json = PolishJSONProvider(app)
+
+    # Baza na telefonie to plik SQLite, a ten wymaga wlasnych ustawien
+    # (dziennik WAL, klucze obce, czas oczekiwania). Nasluch trzeba wpiac,
+    # zanim powstanie pierwsze polaczenie.
+    from app.services.baza import wlacz_pragmy_sqlite
+
+    wlacz_pragmy_sqlite()
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -101,6 +117,25 @@ def create_app(config_object=None) -> Flask:
         etykiety_stanu=_etykiety_stanu,
         klasy_stanu=_klasy_stanu,
     )
+
+    @app.errorhandler(BrakModulu)
+    def _brak_modulu(blad: BrakModulu):
+        """Funkcja wymaga biblioteki, ktorej w tej instalacji nie ma.
+
+        Kod 503, a nie 500: program dziala, tylko tej jednej rzeczy nie zrobi
+        tutaj. Typowo chodzi o telefon w Termuxie bez PyMuPDF - mapa i wycinki
+        PDF sa wtedy do obejrzenia na komputerze. Zamiast bialej strony
+        z bledem uzytkownik dostaje zdanie, ktore mowi, co zrobic.
+        """
+        current_app.logger.info("Brak biblioteki %s przy %s", blad.nazwa, request.path)
+        if request.path.startswith("/api/") or request.accept_mimetypes.best == "application/json":
+            return jsonify({
+                "blad": "brak_biblioteki",
+                "biblioteka": blad.nazwa,
+                "po_co": blad.po_co,
+                "co_zrobic": blad.jak_naprawic,
+            }), 503
+        return render_template("pages/brak-modulu.html", blad=blad), 503
 
     @app.template_filter("liczba")
     def _liczba(value, miejsca: int = 2):

@@ -1,6 +1,11 @@
 """Testy wyszukiwarki i wykazu materialow."""
 import pytest
 
+from tests.conftest import wymaga_pymupdf
+
+# Wszystko w tym pliku pyta o zaimportowana dokumentacje.
+pytestmark = pytest.mark.usefixtures("wymaga_danych")
+
 
 def test_wyszukanie_d155_zwraca_odcinek(klient):
     d = klient.get("/api/szukaj?q=D155").get_json()
@@ -84,10 +89,17 @@ def test_repery_wysokosciowo_sa_posortowane(klient):
     assert roznice == sorted(roznice)
 
 
-def test_strony_wyszukiwarki_i_mapy_sie_renderuja(klient):
+def test_strony_wyszukiwarki_sie_renderuja(klient):
     for sciezka in ("/szukaj", "/szukaj?q=D155", "/szukaj?q=Wyl101",
-                    "/szukaj?q=NIE_MA_TAKIEGO", "/mapa"):
+                    "/szukaj?q=NIE_MA_TAKIEGO"):
         assert klient.get(sciezka).status_code == 200, sciezka
+
+
+@wymaga_pymupdf
+def test_strona_mapy_sie_renderuje(klient):
+    """Osobno, bo mapa jako jedyna wymaga PyMuPDF - bez niego zamiast strony
+    wychodzi (celowo) wyjasnienie z kodem 503."""
+    assert klient.get("/mapa").status_code == 200
 
 
 def test_strona_wyniku_pokazuje_warianty_rur(klient):

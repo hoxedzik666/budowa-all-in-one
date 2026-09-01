@@ -8,7 +8,7 @@
 |---|---|---|
 | Backend | Flask | 3.0.3 |
 | ORM | SQLAlchemy (styl 2.0) + Flask-SQLAlchemy | 2.0.36 / 3.1.1 |
-| Baza | PostgreSQL | 16-alpine |
+| Baza | PostgreSQL (na telefonie: SQLite) | 16-alpine |
 | Serwer | gunicorn | 23.0.0 |
 | Odczyt PDF | PyMuPDF (`fitz`) | 1.24.14 |
 | Odczyt XLSX | openpyxl | 3.1.5 |
@@ -29,6 +29,24 @@
   odpowiedzieć „skąd wzięła się ta liczba” bez wracania do PDF-u, a przy tym
   jest indeksowalny.
 - **PostGIS** czeka gotowy, gdy pojawią się współrzędne obiektów.
+
+## Dlaczego mimo to SQLite na telefonie
+
+Na Androidzie (Termux) Postgres to demon do pilnowania i kilkadziesiąt megabajtów
+w tle — a sterownik `psycopg` nie ma tam gotowego koła. SQLite jest jednym
+plikiem, który da się przegrać kablem, i nie potrzebuje niczego uruchamiać.
+
+Kosztu prawie nie ma, bo **żadne zapytanie w tym projekcie nie korzysta z tego,
+co Postgres ma ponad SQLite**: `WITH RECURSIVE` na razie nie jest używane
+(przejścia po grafie robimy w Pythonie), a kolumny JSON czytamy w całości, po
+kluczu wiersza — nie po wnętrzu dokumentu. Zostaje `NUMERIC`, które SQLite
+przyjmuje jako `NUMERIC` i zwraca przez `Decimal` po stronie SQLAlchemy.
+
+Wybór jest jedną linijką: `DATABASE_URL` przebija automatykę, więc kto chce
+Postgresa w Termuxie, nie musi ruszać kodu. Różnice składni między silnikami
+siedzą w dwóch miejscach — `app/models/typy.py` (wariant `JSONB`) i
+`app/services/schemat.py` (rozgałęzienie po dialekcie). Opis:
+[`16-termux.md`](16-termux.md).
 
 ## Dlaczego PyMuPDF, a nie pdftotext
 

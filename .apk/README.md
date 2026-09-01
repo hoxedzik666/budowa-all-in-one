@@ -43,6 +43,29 @@ Nie trzeba odinstalowywać aplikacji.
 
 ---
 
+## Serwer na tym samym telefonie (Termux)
+
+Serwerem nie musi być komputer — całe narzędzie da się uruchomić na tym samym
+telefonie, w Termuxie. Wtedy nie potrzeba ani Wi-Fi, ani komputera na budowie.
+
+1. W Termuxie: `cd ~/budowa-all-in-one && ./termux/uruchom.sh`
+2. W aplikacji: **Serwer na tym telefonie (Termux)** — przycisk wpisuje
+   `http://127.0.0.1:8000` i sprawdza połączenie tak samo jak adres wpisany ręcznie.
+
+Instalacja serwera na telefonie:
+[`docs/project-docs/16-termux.md`](../docs/project-docs/16-termux.md).
+
+Gdy przy uruchomieniu serwer nie odpowiada — najczęściej dlatego, że Termux nie
+został włączony — aplikacja pokazuje ekran `web/blad.html` z komendą do wpisania
+i przyciskiem powrotu do ustawień adresu. Wskazuje go `server.errorPath`
+w `capacitor.config.json`; bez tego Android pokazałby białą stronę.
+
+Czego na telefonie nie ma: mapy planów i wycinków oryginału PDF — one wymagają
+PyMuPDF, który nie instaluje się na Androidzie. Zamiast błędu wychodzi strona
+z wyjaśnieniem.
+
+---
+
 ## Uprawnienia, o które prosi aplikacja
 
 | Uprawnienie | Do czego | Czy konieczne |
@@ -91,8 +114,9 @@ Dockerfile              JDK 21 + Node 20 + Android SDK 35
 docker-compose.yml      usługa `build`, wolumeny na cache
 zbuduj.sh               skrypt budowania (4 kroki, idempotentny)
 package.json            wersje Capacitora i wtyczek — PRZYPIĘTE
-capacitor.config.json   appId, zgoda na HTTP; BEZ adresu serwera
-web/                    ekran konfiguracji adresu (jedyna strona z wnętrza APK)
+capacitor.config.json   appId, zgoda na HTTP, errorPath; BEZ adresu serwera
+web/                    ekran konfiguracji adresu i ekran błędu połączenia
+                        (jedyne strony z wnętrza APK)
 natywne/                nasze pliki nadpisujące wygenerowane przez Capacitora
   └── app/src/main/
       ├── AndroidManifest.xml          uprawnienia, zgoda na HTTP

@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.conftest import wymaga_pymupdf
+
 KATALOG_APK = Path(__file__).resolve().parent.parent / ".apk"
 
 
@@ -44,6 +46,7 @@ def test_skaner_qr_jest_w_pasku_wyszukiwarki(klient):
     assert "data-skanuj data-tylko-apk" in tresc
 
 
+@wymaga_pymupdf
 def test_gps_jest_na_mapie(klient):
     tresc = klient.get("/mapa?strona=2").get_data(as_text=True)
     assert "gdzie-jestem" in tresc
@@ -51,6 +54,7 @@ def test_gps_jest_na_mapie(klient):
     assert "warstwy.gps" in tresc
 
 
+@wymaga_pymupdf
 def test_mapa_ostrzega_ze_gps_nie_nadaje_sie_do_tyczenia(klient):
     """GPS z telefonu ma 3-10 m. Ladny znacznik na mapie kusi, zeby o tym
     zapomniec - dlatego ostrzezenie jest w dymku, a nie w dokumentacji."""
@@ -58,6 +62,7 @@ def test_mapa_ostrzega_ze_gps_nie_nadaje_sie_do_tyczenia(klient):
     assert "Za mało dokładne do tyczenia" in tresc
 
 
+@pytest.mark.usefixtures("wymaga_danych")
 def test_aparat_przy_karcie_odcinka(klient):
     tresc = klient.get("/szukaj?q=D155").get_data(as_text=True)
     assert "data-zdjecie=" in tresc

@@ -47,7 +47,10 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import fitz  # PyMuPDF
+# PyMuPDF pod udawana nazwa - import odklada sie do pierwszego uzycia,
+# zeby brak biblioteki (telefon) nie przewracal calej aplikacji.
+# Szczegoly: app/services/opcjonalne.py
+from app.services.opcjonalne import fitz
 
 # ---------------------------------------------------------------- stale
 

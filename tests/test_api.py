@@ -1,9 +1,15 @@
 """Testy API na zaimportowanej bazie."""
 import pytest
 
+# Wszystko w tym pliku pyta o zaimportowana dokumentacje.
+pytestmark = pytest.mark.usefixtures("wymaga_danych")
+
 
 def test_zdrowie(klient):
-    assert klient.get("/api/zdrowie").get_json() == {"status": "ok"}
+    # `status` to umowa z ekranem konfiguracji w APK; reszta pol to diagnostyka
+    # (na czym stoi baza, ktorych bibliotek opcjonalnych brakuje) - sprawdza ja
+    # test_termux.py, ktory dziala takze na pustej bazie.
+    assert klient.get("/api/zdrowie").get_json()["status"] == "ok"
 
 
 def test_statystyki_maja_dane(klient):
