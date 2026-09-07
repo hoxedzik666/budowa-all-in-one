@@ -1,42 +1,49 @@
 # Serwer na telefonie (Termux)
 
-Trzy skrypty, które sprawiają, że całe narzędzie działa **na telefonie**, bez
-komputera w sieci. Pełny opis z uzasadnieniami:
-[`docs/project-docs/16-termux.md`](../docs/project-docs/16-termux.md).
+Całe narzędzie działa **na telefonie**, bez komputera w sieci. Pełny opis
+z uzasadnieniami: [`docs/project-docs/16-termux.md`](../docs/project-docs/16-termux.md).
 
 ```bash
 pkg install git
 git clone <adres-repozytorium> ~/budowa-all-in-one
 cd ~/budowa-all-in-one
-./termux/instaluj.sh        # paczki, biblioteki, .env, baza, konto admina
-./termux/uruchom.sh         # serwer na http://127.0.0.1:8000
+./start.sh
 ```
 
-Potem otwórz w Chrome `http://127.0.0.1:8000` — albo wskaż ten sam adres
-w aplikacji z `.apk/` (przycisk **Serwer na tym telefonie**).
+To wszystko: pierwszy raz instaluje i zakłada konto, za każdym razem uruchamia
+serwer na `http://127.0.0.1:8000` i otwiera stronę. Login i hasło wypisuje
+w ramce przy starcie.
+
+Ten sam adres wskazuje się w aplikacji z `.apk/` — przycisk **Serwer na tym
+telefonie**.
 
 | Skrypt | Co robi |
 |---|---|
-| `instaluj.sh` | Instaluje paczki Termuxa i biblioteki Pythona, tworzy `.env` z wylosowanym `SECRET_KEY`, zakłada bazę i konto administratora. Można puszczać wielokrotnie. `--z-pdf` próbuje dołożyć PyMuPDF. |
-| `uruchom.sh` | Startuje gunicorna. Domyślnie tylko dla tego telefonu; `--siec` wpuszcza resztę brygady przez Wi-Fi. Trzyma rygiel czuwania, żeby Android nie uśpił serwera. |
+| `../start.sh` | Jedno polecenie: doinstalowuje, czego brakuje, startuje serwer, otwiera przeglądarkę. |
+| `instaluj.sh` | Paczki Termuxa i biblioteki Pythona, `.env` z wylosowanym `SECRET_KEY`, baza z dokumentacją, konto administratora. Można puszczać wielokrotnie. `--z-pdf` próbuje dołożyć PyMuPDF. |
+| `uruchom.sh` | Sam serwer. Domyślnie tylko dla tego telefonu; `--siec` wpuszcza brygadę przez Wi-Fi, `--otworz` otwiera przeglądarkę. Trzyma rygiel czuwania, żeby Android nie uśpił serwera. |
 | `autostart.sh` | Opcjonalny: uruchomienie przy starcie telefonu przez dodatek Termux:Boot. |
 
 ## Dane
 
-Baza po instalacji jest **pusta** — i to wystarczy do niwelatora, zadań
-i raportów. Dokumentacji projektowej telefon nie zaimportuje (import PDF wymaga
-PyMuPDF, którego na Androidzie nie ma), więc dane przenosi się z komputera:
+**Są od razu.** W repozytorium leży `data/baza-startowa/budowa.sqlite3` —
+odczytana dokumentacja projektowa (649 odcinków, 7 439,5 m sieci), bez kont
+i bez raportów. `instaluj.sh` kopiuje ją do `data/budowa.sqlite3`, ale tylko
+gdy tej bazy jeszcze nie ma: istniejącej nie nadpisuje.
+
+Żeby mieć na telefonie bazę swojej ekipy (z kontami, raportami i historią):
 
 ```bash
 # na komputerze, przy działającym docker compose:
 docker compose exec web python -m flask zrzut-sqlite
-# powstaje data/exports/budowa-telefon.sqlite3 — przegraj go na telefon jako:
+# powstały plik przegraj na telefon jako:
 #   ~/budowa-all-in-one/data/budowa.sqlite3
 ```
 
 ## Czego na telefonie nie ma
 
-Mapa planów, kafelki i wycinki oryginału PDF — wszystko, co czyta rysunek.
-Zamiast błędu pokazują stronę z wyjaśnieniem. Reszta narzędzia działa: szukaj,
-karty odcinków, przelicznik rur, niwelator, tyczenie ciągu, materiały, postęp
-robót, raporty, zadania, kody QR i zdjęcia.
+Mapa planów, kafelki i wycinki oryginału PDF — wszystko, co czyta rysunek,
+bo PyMuPDF nie instaluje się na Androidzie. Zamiast błędu pokazują stronę
+z wyjaśnieniem. Reszta działa: szukaj, karty odcinków, przelicznik rur,
+niwelator, tyczenie ciągu, materiały, postęp robót, raporty, zadania, kody QR
+i zdjęcia.

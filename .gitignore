@@ -5,9 +5,16 @@ __pycache__/
 .env
 # Baza na telefonie (Termux) - dane budowy, nie kod. WAL i SHM to pliki
 # towarzyszace dziennikowi SQLite, powstaja obok bazy.
+#
+# UWAGA: wzorzec celowo dotyczy tylko samego katalogu `data/`. Pod nim lezy
+# `data/baza-startowa/budowa.sqlite3` - odczytana dokumentacja projektowa,
+# ktora MA byc w repozytorium (bez niej swiezy telefon nie ma zadnych danych).
+# Zmiana na `data/**/*.sqlite3` wyrzucilaby ja z repozytorium.
 data/*.sqlite3
-data/*.sqlite3-wal
-data/*.sqlite3-shm
+# Pliki dziennika powstaja przy kazdym otwarciu bazy, takze obok bazy startowej -
+# stad wzorzec bez sciezki. W repozytorium ma lezec sam plik bazy.
+*.sqlite3-wal
+*.sqlite3-shm
 data/exports/*
 !data/exports/.gitkeep
 # Zdjecia z budowy - dane uzytkownika, nie kod.

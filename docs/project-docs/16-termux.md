@@ -19,53 +19,92 @@ w telefonie działa również w trybie samolotowym — pętla zwrotna nie potrze
 
 ---
 
-## Instalacja
+## Instalacja i uruchomienie
 
 ```bash
 pkg install git
 git clone <adres-repozytorium> ~/budowa-all-in-one
 cd ~/budowa-all-in-one
-./termux/instaluj.sh
+./start.sh
 ```
 
-Skrypt instaluje paczki Termuxa i biblioteki Pythona, tworzy `.env`
-z wylosowanym `SECRET_KEY`, zakłada bazę i konto administratora (hasło wypisuje
-raz na ekranie). Można go puszczać wielokrotnie — niczego nie kasuje.
+To jest całe uruchomienie. `start.sh` przy pierwszym wywołaniu odpala
+`termux/instaluj.sh` (paczki Termuxa, biblioteki Pythona, `.env` z wylosowanym
+`SECRET_KEY`, baza, konto administratora), a potem startuje serwer i otwiera
+stronę w przeglądarce. Kolejnego dnia to samo polecenie już tylko startuje
+serwer — instalacja pomija to, co zrobione.
+
+Login i hasło skrypt wypisuje w ramce przy każdym starcie. Bez tego „strona
+działa", ale nie da się do niej wejść, a hasła nikt nie pamięta; leży ono
+w `.env`, który jest w `.gitignore` i w katalogu widocznym tylko dla Termuxa.
+
+Ręcznie, gdy trzeba coś ustawić inaczej:
 
 ```bash
+./termux/instaluj.sh         # sama instalacja
 ./termux/uruchom.sh          # serwer tylko dla tego telefonu
 ./termux/uruchom.sh --siec   # widoczny też dla reszty brygady przez Wi-Fi
+./termux/uruchom.sh --otworz # dodatkowo otwiera przeglądarkę
 ```
 
 Zatrzymanie: `Ctrl+C`. Termux musi zostać uruchomiony — serwer żyje tak długo
 jak on.
 
+Otwarcie przeglądarki jest **dodatkiem**: skrypt próbuje `termux-open-url`
+(z pakietu `termux-api`), potem `am start`, a gdy nie ma żadnego — tylko wypisuje
+adres. Brak Termux:API nigdy nie przewraca serwera.
+
 ---
 
-## Skąd biorą się dane
+## Baza startowa — dane od pierwszego uruchomienia
 
-Baza po instalacji jest **pusta**. Niwelator, zadania i raporty dzienne działają
-od razu, bo nie potrzebują dokumentacji. Reszta — odcinki, rzędne, materiały —
-pochodzi z importu, a importu telefon nie wykona: czyta on PDF-y przez PyMuPDF,
-którego na Androidzie nie ma (patrz niżej).
+Telefon **nie zaimportuje dokumentacji sam**: import czyta PDF-y przez PyMuPDF,
+którego na Androidzie nie ma (patrz niżej). Gdyby na tym poprzestać, świeżo
+zainstalowane narzędzie miałoby pustą wyszukiwarkę, a do jego uruchomienia
+i tak potrzebny byłby komputer z Dockerem — czyli dokładnie to, czego ta całość
+miała nie wymagać.
 
-Dlatego dane przygotowuje komputer i przekazuje jednym plikiem:
+Dlatego w repozytorium leży gotowy plik:
+
+```
+data/baza-startowa/budowa.sqlite3        ok. 1,2 MB
+```
+
+13 arkuszy, 465 profili, 1059 obiektów, 649 odcinków, 880 połączeń, 151 punktów
+osnowy, 32 pozycje materiałowe, 18 stron planów — 7 439,5 m sieci.
+`instaluj.sh` kopiuje go do `data/budowa.sqlite3`, **ale tylko wtedy, gdy tej
+bazy jeszcze nie ma**: istniejąca baza to pomiary, raporty i zdjęcia z wykopu,
+których nie wolno nadpisać.
+
+Czego w tym pliku nie ma: **kont, zadań, raportów dziennych, pomiarów, zdjęć
+i historii stanów**. To dane konkretnych osób i konkretnej budowy, a plik widzi
+każdy, kto sklonuje projekt. Pilnują tego dwa testy w `tests/test_termux.py` —
+jeden liczy zawartość, drugi sprawdza, że tabele ludzi są puste.
+
+Dlaczego to nie jest „dane w repozytorium, których tam nie powinno być": ta sama
+treść leży już obok, jako `docs/Profile Scalone.pdf` i `Materiał.xlsx` (34 MB).
+Plik SQLite jest ich odczytaną postacią, a nie nowym źródłem.
+
+Odtworzenie po zmianie schematu albo dokumentacji:
 
 ```bash
-# na komputerze, przy działającym docker compose:
+docker compose exec web python -m flask zrzut-sqlite \
+    data/baza-startowa/budowa.sqlite3 --tylko-dokumentacja --nadpisz
+```
+
+### Przeniesienie bazy swojej ekipy
+
+Ta sama komenda **bez** `--tylko-dokumentacja` robi pełny zrzut — z kontami,
+raportami i historią stanów. Tak przenosi się na telefon bazę konkretnej budowy:
+
+```bash
 docker compose exec web python -m flask zrzut-sqlite
 #   → data/exports/budowa-telefon.sqlite3
 ```
 
-Komenda przepisuje wszystkie tabele do pliku SQLite — łącznie z kontami,
-raportami i historią stanów. Plik przegrywa się na telefon (kabel, chmura,
-pendrive) jako:
-
-```
-~/budowa-all-in-one/data/budowa.sqlite3
-```
-
-Po podmianie wystarczy uruchomić serwer ponownie.
+Plik przegrywa się na telefon (kabel, chmura, pendrive) jako
+`~/budowa-all-in-one/data/budowa.sqlite3`, podmieniając startowy. Po podmianie
+wystarczy uruchomić serwer ponownie.
 
 > **Przeniesienie w drugą stronę** (pomiary z telefonu z powrotem na serwer) nie
 > jest zrobione. Telefon i komputer to na razie dwie osobne bazy — zlanie ich
@@ -76,8 +115,8 @@ Po podmianie wystarczy uruchomić serwer ponownie.
 
 ## W przeglądarce
 
-Otwórz w Chrome (albo Firefoksie) `http://127.0.0.1:8000` i zaloguj się kontem
-z instalacji.
+`./start.sh` otwiera stronę sam. Ręcznie: w Chrome (albo Firefoksie)
+`http://127.0.0.1:8000`, logowanie kontem wypisanym przy starcie.
 
 **Aplikację da się zainstalować na ekranie startowym** — menu przeglądarki →
 *Dodaj do ekranu głównego*. Service worker działa, mimo że nie ma HTTPS:

@@ -37,14 +37,20 @@ stoi na telefonie, a otwiera się to przeglądarką albo aplikacją z `.apk/`:
 pkg install git                                   # w Termuxie
 git clone <adres-repozytorium> ~/budowa-all-in-one
 cd ~/budowa-all-in-one
-./termux/instaluj.sh        # paczki, baza (SQLite), konto admina
-./termux/uruchom.sh         # http://127.0.0.1:8000
+./start.sh
 ```
 
-Dane przenosi się z komputera jednym plikiem (`flask zrzut-sqlite` → podmiana
-`data/budowa.sqlite3`), bo import z PDF wymaga PyMuPDF, którego na Androidzie
-nie ma — mapa i wycinki oryginału zostają wtedy na komputerze, a reszta
-narzędzia działa normalnie. Szczegóły:
+To wszystko. Skrypt doinstalowuje, czego brakuje, zakłada konto, uruchamia
+serwer na `http://127.0.0.1:8000` i otwiera stronę. Kolejnego dnia to samo
+`./start.sh` już tylko startuje serwer.
+
+**Dane są od razu** — w repozytorium leży `data/baza-startowa/budowa.sqlite3`
+z odczytaną dokumentacją (649 odcinków, 7 439,5 m sieci), więc wyszukanie
+`D155` działa zaraz po instalacji. Komputer nie jest do niczego potrzebny.
+
+Czego na telefonie nie ma: mapy planów i wycinków oryginału PDF — wymagają
+PyMuPDF, którego na Androidzie się nie zainstaluje. Zamiast błędu pokazują
+stronę z wyjaśnieniem. Szczegóły:
 [`docs/project-docs/16-termux.md`](docs/project-docs/16-termux.md).
 
 ---
@@ -112,8 +118,9 @@ i rzeczywisty spadek. **Pomiar nigdy nie nadpisuje projektu.**
 strony offline. Do tego kody QR na studnie i karta odcinka do druku na A4.
 
 **Mieści się w telefonie** — cały serwer razem z bazą uruchamia się w Termuxie
-i odpowiada pod `127.0.0.1:8000`, więc na budowie bez komputera i bez Wi-Fi
-nadal widać rzędne, spadki i zapotrzebowanie na rury.
+jednym poleceniem `./start.sh` i odpowiada pod `127.0.0.1:8000`, z danymi
+gotowymi od pierwszego uruchomienia. Na budowie bez komputera i bez Wi-Fi nadal
+widać rzędne, spadki i zapotrzebowanie na rury.
 
 ---
 
@@ -128,6 +135,8 @@ docker compose exec web python -m flask konwertuj-plany      # sieć z planów (
 docker compose exec web python -m flask audyt-danych         # kontrola jakości danych
 docker compose exec web python -m flask statystyki           # co jest w bazie
 docker compose exec web python -m flask zrzut-sqlite         # cała baza w jednym pliku (na telefon)
+docker compose exec web python -m flask zrzut-sqlite \
+    data/baza-startowa/budowa.sqlite3 --tylko-dokumentacja --nadpisz   # odtworzenie bazy startowej
 docker compose exec web python -m flask pokaz-odcinek Wyl101 D155
 docker compose exec web python -m pytest -q                  # testy
 ```
@@ -204,7 +213,9 @@ app/
 ├── templates/       # Jinja2 + Bootstrap 5
 └── static/vendor/   # jQuery 3.7.1, Bootstrap 5.3.3, Tailwind 3.4, Leaflet 1.9.4
                      # — lokalnie, bez CDN, bo na budowie bywa bez zasięgu
+start.sh             # telefon: jedno polecenie — instalacja (raz), serwer, przeglądarka
 termux/              # uruchomienie serwera na telefonie (instaluj / uruchom / autostart)
+data/baza-startowa/  # odczytana dokumentacja jako plik SQLite — żeby telefon miał dane od razu
 .apk/                # powłoka Capacitora: GPS, aparat, skaner QR
 docs/
 ├── Profile Scalone.pdf, Materiał.xlsx, !!_DK29_osnowa_ok_v1.txt

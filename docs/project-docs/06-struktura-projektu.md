@@ -259,6 +259,7 @@ nawigację i rozwijane sekcje niewidocznymi. Pilnuje tego `tests/test_ui_regresj
 | `data/zdjecia/` | **zdjęcia z wykopu — nie kasować.** Nie odtworzą się; wykop zostanie zasypany |
 | `.apk/` | projekt aplikacji na Androida wraz ze środowiskiem budowania w Dockerze |
 | `termux/` | skrypty uruchomienia serwera na telefonie: `instaluj.sh`, `uruchom.sh`, `autostart.sh` |
+| `data/baza-startowa/` | odczytana dokumentacja jako plik SQLite (1,2 MB) — żeby świeżo zainstalowany telefon miał dane bez komputera. Bez kont i raportów |
 | `scripts/` | pomocnicze skrypty jednorazowe, uruchamiane ręcznie w kontenerze |
 | `tests/` | testy: 299 sztuk |
 | `migrations/` | katalog Flask-Migrate (Alembic) |
@@ -274,6 +275,7 @@ nawigację i rozwijane sekcje niewidocznymi. Pilnuje tego `tests/test_ui_regresj
 | `app/config.py` | konfiguracja z zmiennych środowiskowych |
 | `app/extensions.py` | `db`, `migrate`, `login_manager` — osobno, żeby uniknąć cyklicznych importów |
 | `app/cli.py` | komendy `flask …`: import danych, zarządzanie kontami, statystyki |
+| `start.sh` | telefon: jedno polecenie — instalacja (przy pierwszym uruchomieniu), serwer, przeglądarka |
 | `Dockerfile` | obraz aplikacji (Python 3.12 + PyMuPDF + tesseract) |
 | `docker-compose.yml` | trzy usługi: `web`, `db` (Postgres 16), `adminer` |
 | `.env` | sekrety i konfiguracja lokalna — **w `.gitignore`** |

@@ -11,15 +11,18 @@ cd "$(dirname "$0")/.."
 
 ADRES="127.0.0.1"
 PORT="${WEB_PORT:-8000}"
+OTWORZ=0
 
 for arg in "$@"; do
     case "$arg" in
         --siec|--sieć) ADRES="0.0.0.0" ;;
+        --otworz|--otwórz) OTWORZ=1 ;;
         -h|--help)
-            echo "Uzycie: ./termux/uruchom.sh [--siec]"
+            echo "Uzycie: ./termux/uruchom.sh [--siec] [--otworz]"
             echo "  bez opcji  serwer slucha tylko na 127.0.0.1 (ten telefon)"
             echo "  --siec     serwer slucha na wszystkich adresach - reszta"
             echo "             brygady moze wejsc przez Wi-Fi"
+            echo "  --otworz   otworz strone w przegladarce po starcie"
             exit 0 ;;
         *) echo "Nieznany argument: $arg" >&2; exit 1 ;;
     esac
@@ -55,6 +58,30 @@ else
 fi
 echo "======================================================================"
 echo
+
+# Otwarcie przegladarki jest **dodatkiem** - gdy sie nie uda, serwer ma dzialac
+# dalej, dlatego kazda proba konczy sie `|| true`, a calosc leci w tle: gunicorn
+# nie zdazyl jeszcze wstac, wiec czekamy chwile, zeby Chrome nie trafil w pustke.
+if [ "$OTWORZ" = "1" ]; then
+    (
+        # Podpowloka dziedziczy pulapke EXIT ustawiona wyzej, wiec konczac sie
+        # po dwoch sekundach zdjelaby rygiel czuwania **dzialajacemu serwerowi**.
+        # Objaw bylby mylacy: serwer chodzi, a po zgaszeniu ekranu przestaje
+        # odpowiadac. Dlatego tutaj pulapke kasujemy.
+        trap - EXIT
+        sleep 2
+        if command -v termux-open-url >/dev/null 2>&1; then
+            # Pakiet `termux-api` + aplikacja Termux:API. Najczystsza droga.
+            termux-open-url "http://127.0.0.1:${PORT}" || true
+        elif command -v am >/dev/null 2>&1; then
+            # Zapas na telefony bez Termux:API - `am` jest w samym Termuxie.
+            am start -a android.intent.action.VIEW \
+                -d "http://127.0.0.1:${PORT}" >/dev/null 2>&1 || true
+        else
+            echo "  (nie mam czym otworzyc przegladarki - wpisz adres recznie)"
+        fi
+    ) &
+fi
 
 # Jeden proces roboczy, kilka watkow: telefon ma malo pamieci, a zadania sa
 # krotkie i czekaja glownie na dysk. `--timeout 120` zostawia zapas na wolna

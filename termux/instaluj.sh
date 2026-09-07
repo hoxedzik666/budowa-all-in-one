@@ -67,7 +67,21 @@ echo
 echo "=== 4/5  baza ==="
 mkdir -p data/exports data/zdjecia
 set -a; . ./.env; set +a
+
+# Import dokumentacji czyta PDF-y przez PyMuPDF, ktorego na Androidzie nie ma,
+# wiec telefon nie zaimportuje ich u siebie. Zamiast tego w repozytorium lezy
+# gotowa baza z dokumentacja - bez kont i bez raportow. Kopiujemy ja tylko na
+# poczatku: istniejaca baza to dane budowy, ktorych nie wolno nadpisac.
+STARTOWA=data/baza-startowa/budowa.sqlite3
+if [ ! -f data/budowa.sqlite3 ] && [ -f "$STARTOWA" ]; then
+    cp "$STARTOWA" data/budowa.sqlite3
+    echo "  wgralem baze startowa z dokumentacja projektowa"
+elif [ -f data/budowa.sqlite3 ]; then
+    echo "  baza juz jest - nie ruszam"
+fi
+
 python -m flask init-db
+python -m flask statystyki | sed -n '/ZAWARTOSC/,$p' | head -12
 
 echo
 echo "=== 5/5  konto ==="
@@ -85,11 +99,11 @@ echo
 echo "======================================================================"
 echo " Gotowe."
 echo
-echo " Uruchomienie:      ./termux/uruchom.sh"
-echo " Potem w Chrome:    http://127.0.0.1:8000"
+echo " Uruchomienie:      ./start.sh   (albo ./termux/uruchom.sh)"
+echo " Adres:             http://127.0.0.1:${WEB_PORT:-8000}"
 echo
-echo " Baza jest pusta - dane z dokumentacji projektowej przenosi sie"
-echo " z komputera: tam 'flask zrzut-sqlite', a powstaly plik kopiuje sie"
-echo " tutaj jako data/budowa.sqlite3."
+echo " Dane z dokumentacji projektowej sa juz w bazie. Jesli chcesz zamiast"
+echo " nich baze swojej ekipy (z kontami i raportami), zrob na serwerze"
+echo " 'flask zrzut-sqlite' i podmien plik data/budowa.sqlite3."
 echo " Opis krok po kroku: docs/project-docs/16-termux.md"
 echo "======================================================================"

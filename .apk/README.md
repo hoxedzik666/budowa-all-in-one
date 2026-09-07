@@ -48,7 +48,7 @@ Nie trzeba odinstalowywać aplikacji.
 Serwerem nie musi być komputer — całe narzędzie da się uruchomić na tym samym
 telefonie, w Termuxie. Wtedy nie potrzeba ani Wi-Fi, ani komputera na budowie.
 
-1. W Termuxie: `cd ~/budowa-all-in-one && ./termux/uruchom.sh`
+1. W Termuxie: `cd ~/budowa-all-in-one && ./start.sh`
 2. W aplikacji: **Serwer na tym telefonie (Termux)** — przycisk wpisuje
    `http://127.0.0.1:8000` i sprawdza połączenie tak samo jak adres wpisany ręcznie.
 

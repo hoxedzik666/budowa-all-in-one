@@ -11,6 +11,18 @@ from sqlalchemy import func, select, text
 
 from app.extensions import db
 
+# Tabele, ktore nie pochodza z dokumentacji projektowej, tylko od ludzi
+# pracujacych na budowie. Zrzut z `--tylko-dokumentacja` je pomija - inaczej
+# baza startowa lezaca w repozytorium niosla by czyjes konta i raporty.
+TABELE_LUDZI = frozenset({
+    "uzytkownik",
+    "zadanie",
+    "raport_dzienny",
+    "pomiar_wykonawczy",
+    "zdjecie",
+    "zmiana_statusu",
+})
+
 
 def register_cli(app: Flask) -> None:
 
@@ -388,12 +400,22 @@ def register_cli(app: Flask) -> None:
     @app.cli.command("zrzut-sqlite")
     @click.argument("plik", required=False)
     @click.option("--nadpisz", is_flag=True, help="Skasuj plik docelowy, jesli istnieje.")
-    def zrzut_sqlite(plik: str | None, nadpisz: bool) -> None:
+    @click.option("--tylko-dokumentacja", is_flag=True,
+                  help="Pomin konta, zadania, raporty, pomiary i zdjecia.")
+    def zrzut_sqlite(plik: str | None, nadpisz: bool, tylko_dokumentacja: bool) -> None:
         """Przepisz cala baze do jednego pliku SQLite - do przeniesienia na telefon.
 
         Import z PDF wymaga PyMuPDF, ktorego na Androidzie nie ma, wiec telefon
         nie zaimportuje dokumentacji u siebie. Dostaje gotowa baze: ten plik
         kopiuje sie do `data/budowa.sqlite3` w Termuxie i to wszystko.
+
+        Bez zadnej flagi zrzut jest **pelny** - z kontami, raportami i pomiarami.
+        Tak przenosi sie baze konkretnej budowy na telefon konkretnej ekipy.
+
+        `--tylko-dokumentacja` zostawia wylacznie to, co przyszlo z dokumentacji
+        projektowej. Tak powstaje `data/baza-startowa/budowa.sqlite3` lezaca
+        w repozytorium: kazdy, kto sklonuje projekt, ma od razu odcinki i rzedne,
+        ale nie dostaje cudzych kont ani raportow z budowy.
 
         Kolumny JSON przechodza same - modele deklaruja je jako JSON z wariantem
         JSONB dla Postgresa (app/models/typy.py), wiec ten sam model opisuje
@@ -425,6 +447,9 @@ def register_cli(app: Flask) -> None:
             # Kolejnosc `sorted_tables` idzie od tabel bez zaleznosci w gore,
             # wiec klucze obce zawsze maja juz na co wskazywac.
             for tabela in db.metadata.sorted_tables:
+                if tylko_dokumentacja and tabela.name in TABELE_LUDZI:
+                    click.echo(f"  {tabela.name:24} pominieta")
+                    continue
                 wiersze = db.session.execute(wybierz(tabela)).mappings().all()
                 if not wiersze:
                     click.echo(f"  {tabela.name:24} —")
@@ -440,7 +465,11 @@ def register_cli(app: Flask) -> None:
 
         rozmiar = cel.stat().st_size / 1024 / 1024
         click.echo(f"\nGotowe: {cel} ({rozmiar:.1f} MB, {razem} wierszy)")
-        click.echo("Przegraj ten plik na telefon jako data/budowa.sqlite3")
+        if tylko_dokumentacja:
+            click.echo("Bez kont, zadan, raportow, pomiarow i zdjec.")
+            click.echo("Tak przygotowuje sie data/baza-startowa/budowa.sqlite3.")
+        else:
+            click.echo("Przegraj ten plik na telefon jako data/budowa.sqlite3")
         click.echo("(instrukcja: docs/project-docs/16-termux.md)")
 
     @app.cli.command("pokaz-odcinek")
